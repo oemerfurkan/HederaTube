@@ -1,0 +1,8 @@
+# local upstream clone metadata for the vendored x402 tree (see x402/.git-upstream)
+x402/.git-upstream/
+node_modules/
+.DS_Store
+.env
+.env.*
+!.env-local
+!.env.example
