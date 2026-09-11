@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+/* HederaTube Design System v0.1 tokens. Dark is the default (watch page). */
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f2f2f2;
+  --fg: #0f0f0f;
+  --muted-fg: #606060;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --secondary: #f2f2f2;
+  --secondary-fg: #0f0f0f;
+  --positive-fg: #1f7c30;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 8px 24px -12px rgba(0, 0, 0, 0.22);
+
+  --primary: #ff0000;
+  --primary-fg: #ffffff;
+  --accent-soft: rgba(255, 0, 0, 0.1);
+  --ring: rgba(255, 0, 0, 0.4);
+  --destructive: #c4302b;
+  --positive: #2ba640;
+  --pending: #c8a24a;
+
+  /* Chain means money. Guide locks purple; #C8A24A collides with the pending status color. */
+  --chain: #8259ef;
+  --chain-fg: color-mix(in oklab, var(--chain) 62%, black);
+  --chain-soft: color-mix(in oklab, var(--chain) 12%, transparent);
+  --chain-on: #ffffff;
+}
+
+[data-theme="dark"] {
+  --bg: #0f0f0f;
+  --surface: #181818;
+  --surface-2: #272727;
+  --fg: #f1f1f1;
+  --muted-fg: #aaaaaa;
+  --border: #303030;
+  --input: #303030;
+  --secondary: #272727;
+  --secondary-fg: #f1f1f1;
+  --positive-fg: #5fd47a;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 8px 24px -12px rgba(0, 0, 0, 0.7);
+  --chain-fg: color-mix(in oklab, var(--chain) 58%, white);
+  --chain-soft: color-mix(in oklab, var(--chain) 16%, transparent);
+}
+
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-ink: #0f0f0f;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted-fg: var(--muted-fg);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-secondary: var(--secondary);
+  --color-secondary-fg: var(--secondary-fg);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-positive: var(--positive);
+  --color-positive-fg: var(--positive-fg);
+  --color-pending: var(--pending);
+  --color-chain: var(--chain);
+  --color-chain-fg: var(--chain-fg);
+  --color-chain-soft: var(--chain-soft);
+  --color-chain-on: var(--chain-on);
+
+  --radius-*: initial;
+  --radius-pill: 9999px;
+  --radius-card: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+
+  --shadow-*: initial;
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
+
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-display: 44px;
+  --text-display--line-height: 1.03;
+  --text-display--letter-spacing: -0.03em;
+  --text-display--font-weight: 700;
+  --text-h1: 26px;
+  --text-h1--line-height: 1.15;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h1--font-weight: 700;
+  --text-h2: 18px;
+  --text-h2--line-height: 1.3;
+  --text-h2--font-weight: 500;
+  --text-body: 15px;
+  --text-body--line-height: 1.55;
+  --text-small: 13px;
+  --text-small--line-height: 1.45;
+  --text-label: 12px;
+  --text-label--line-height: 1.2;
+  --text-label--letter-spacing: 0.06em;
+  --text-label--font-weight: 500;
+  --text-numeric: 22px;
+  --text-numeric--line-height: 1.2;
+  --text-numeric--font-weight: 500;
+
+  --ease-ht: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --animate-spin-ht: ht-spin 700ms linear infinite;
+  --animate-chunk-tick: chunk-tick 1.2s ease-in-out infinite;
+
+  @keyframes ht-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes chunk-tick {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility label-caps {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    transition:
+      background 180ms var(--ease-ht),
+      color 180ms var(--ease-ht);
+  }
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  ::selection {
+    background: var(--accent-soft);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-chunk-tick {
+      animation: none;
+    }
+  }
+}
