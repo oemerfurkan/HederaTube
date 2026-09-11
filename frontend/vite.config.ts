@@ -29,6 +29,8 @@ export default defineConfig(({ mode }) => {
         : undefined,
     },
     test: {
+      // Tests always run against the in-process mock, whatever .env says.
+      env: { VITE_API_MODE: "mock", VITE_ONBOARD_MODE: "mock", VITE_MIRROR_CONTRACT_CALL_URL: "/mock-mirror", VITE_DEV_PRIVATE_KEY: "", VITE_PRIVY_APP_ID: "" },
       environment: "jsdom",
       globals: false,
       setupFiles: ["./tests/setup.ts"],

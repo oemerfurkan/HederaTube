@@ -6,7 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, Dialog, cn } from "@/design/ui";
 import { useMe } from "@/api/hooks";
 import { api } from "@/api/client";
-import { API_MODE } from "@/lib/hedera";
+import { WORLD_VERIFY_MODE } from "@/lib/hedera";
 import { useWallet } from "@/features/wallet/WalletProvider";
 
 const WORLD_APP_ID = (import.meta.env.VITE_WORLD_APP_ID as string) || "";
@@ -146,7 +146,7 @@ export function VerifyPage() {
               World ID is not configured (`VITE_WORLD_APP_ID`). Standard IDKit ships with the app id; Selfie Check is roadmap.
             </p>
           )}
-          {API_MODE === "mock" ? (
+          {WORLD_VERIFY_MODE === "simulate" ? (
             <Button
               variant={WORLD_APP_ID ? "outline" : "primary"}
               loading={busy}

@@ -3,7 +3,7 @@ import { House, UserCircle } from "@phosphor-icons/react";
 import { cn, Amount, Mono } from "@/design/ui";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import { useMe, useRunBatch } from "@/api/hooks";
-import { API_MODE } from "@/lib/hedera";
+import { API_MODE, DEV_CONTROLS } from "@/lib/hedera";
 import { api } from "@/api/client";
 
 const items = [
@@ -42,7 +42,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             {label}
           </NavLink>
         ))}
-        {API_MODE === "mock" ? (
+        {DEV_CONTROLS ? (
           <div className="mt-auto grid gap-1.5 px-1 pb-3">
             <span className="label-caps text-muted-fg">Demo controls</span>
             <button
@@ -54,17 +54,19 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               Run settlement batch
               {runBatch.data ? <span className="tabular text-muted-fg">{runBatch.data.settled} settled</span> : null}
             </button>
-            <button
-              type="button"
-              onClick={() => api.resetMock().then(() => window.location.reload())}
-              className="h-9 rounded-pill px-4 text-left text-[13px] text-muted-fg hover:bg-surface-2"
-            >
-              Reset mock data
-            </button>
+            {API_MODE === "mock" ? (
+              <button
+                type="button"
+                onClick={() => api.resetMock().then(() => window.location.reload())}
+                className="h-9 rounded-pill px-4 text-left text-[13px] text-muted-fg hover:bg-surface-2"
+              >
+                Reset mock data
+              </button>
+            ) : null}
           </div>
         ) : null}
         {wallet.status === "ready" ? (
-          <div className={cn("grid gap-1 rounded-card border border-chain/40 bg-surface p-4", API_MODE !== "mock" && "mt-auto")}>
+          <div className={cn("grid gap-1 rounded-card border border-chain/40 bg-surface p-4", !DEV_CONTROLS && "mt-auto")}>
             <Mono className="text-fg">{wallet.accountId ?? "0.0.—"}</Mono>
             <span className="text-[12px] text-muted-fg">Spent today</span>
             <Amount value={me.data?.spent_today ?? 0n} className="text-[14px] font-medium text-chain-fg" />

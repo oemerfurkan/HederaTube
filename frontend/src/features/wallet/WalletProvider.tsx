@@ -3,7 +3,7 @@ import { PrivyProvider, getEmbeddedConnectedWallet, useLogin, usePrivy, useWalle
 import { hederaTestnet } from "viem/chains";
 import type { ClientHederaBatchSigner } from "@/payments/x402-lite";
 import { createPrivySigner, type Eip1193Provider } from "@/payments/privySigner";
-import { loadOrCreateLocalSigner } from "@/payments/localSigner";
+import { loadOrCreateLocalSigner, localProvider } from "@/payments/localSigner";
 import { runOnboarding, type OnboardingState } from "@/payments/onboarding";
 import { API_MODE, PRIVY_APP_ID, USDC_TOKEN_ID, WALLET_MODE } from "@/lib/hedera";
 import { getTokenBalance } from "@/lib/mirror";
@@ -212,6 +212,7 @@ const LOCAL_CONNECTED_KEY = "ht:local-wallet:connected";
 
 function LocalBridge({ children }: { children: ReactNode }) {
   const [signer, setSigner] = useState<ClientHederaBatchSigner>();
+  const [privateKey, setPrivateKey] = useState<`0x${string}`>();
   const [connecting, setConnecting] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -228,7 +229,10 @@ function LocalBridge({ children }: { children: ReactNode }) {
       return;
     }
     loadOrCreateLocalSigner()
-      .then(result => setSigner(result.signer))
+      .then(result => {
+        setSigner(result.signer);
+        setPrivateKey(result.privateKey);
+      })
       .finally(() => setReady(true));
   }, []);
 
@@ -242,6 +246,7 @@ function LocalBridge({ children }: { children: ReactNode }) {
         loadOrCreateLocalSigner()
           .then(result => {
             setSigner(result.signer);
+            setPrivateKey(result.privateKey);
             try {
               localStorage.setItem(LOCAL_CONNECTED_KEY, "1");
             } catch {
@@ -252,6 +257,7 @@ function LocalBridge({ children }: { children: ReactNode }) {
       },
       logoutImpl: async () => {
         setSigner(undefined);
+        setPrivateKey(undefined);
         try {
           localStorage.removeItem(LOCAL_CONNECTED_KEY);
         } catch {
@@ -259,8 +265,9 @@ function LocalBridge({ children }: { children: ReactNode }) {
         }
       },
       localSigner: signer,
+      getProvider: privateKey ? () => Promise.resolve(localProvider(privateKey)) : undefined,
     }),
-    [signer, connecting, ready],
+    [signer, privateKey, connecting, ready],
   );
   const value = useWalletCore(bridge, "local");
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;

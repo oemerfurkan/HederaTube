@@ -27,6 +27,8 @@ export function Player({ video }: { video: Video }) {
     // Listeners first, then source, then media: MEDIA_ATTACHED can fire synchronously and a
     // listener registered after attachMedia misses it (no playlist would ever load).
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      // Explicit start: hls.js's autoStartLoad does not always kick in for background tabs.
+      hls.startLoad(0);
       void media.play().catch(() => undefined);
     });
     hls.on(Hls.Events.ERROR, (_e, data) => {

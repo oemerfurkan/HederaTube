@@ -32,6 +32,11 @@ export const COLLECTOR_ID = deployment.collectorId;
 export const API_MODE = (import.meta.env.VITE_API_MODE || "mock") as "mock" | "real";
 export const ONBOARD_MODE = (import.meta.env.VITE_ONBOARD_MODE || "mock") as "mock" | "real";
 export const PRIVY_APP_ID: string = import.meta.env.VITE_PRIVY_APP_ID || "";
+/** Demo controls (run settlement batch) — always on in mock mode, opt-in against a real backend. */
+export const DEV_CONTROLS: boolean = API_MODE === "mock" || import.meta.env.VITE_DEV_CONTROLS === "true";
+export const WORLD_VERIFY_MODE = ((import.meta.env.VITE_WORLD_VERIFY_MODE as string) || (API_MODE === "mock" ? "simulate" : "real")) as "simulate" | "real";
+/** Dev-only: seed the local signer with a funded testnet key instead of generating one. */
+export const DEV_PRIVATE_KEY: string = import.meta.env.VITE_DEV_PRIVATE_KEY || "";
 export const WALLET_MODE = ((import.meta.env.VITE_WALLET_MODE as string) ||
   (PRIVY_APP_ID ? "privy" : "local")) as "privy" | "local";
 

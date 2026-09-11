@@ -1,0 +1,132 @@
+# HederaTube — single compose for Dokploy (Traefik routes / → web, /api and /stream → api).
+# Secrets and env come from Dokploy; see backend/.env-local and facilitator/.env-local for the keys.
+services:
+  garage:
+    image: dxflrs/garage:v2.1.0
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    secrets: [garage_rpc_secret, garage_admin_token]
+    restart: unless-stopped
+
+  garage-init:
+    image: dxflrs/garage:v2.1.0
+    depends_on: [garage]
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - ./backend/scripts/garage-bootstrap.sh:/bootstrap.sh:ro
+    secrets: [garage_rpc_secret, garage_admin_token]
+    environment:
+      S3_BUCKET: ${S3_BUCKET:-hederatube}
+    entrypoint: ["/bin/sh", "/bootstrap.sh"]
+    restart: "no"
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: hederatube
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hederatube}
+      POSTGRES_DB: hederatube
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hederatube"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  facilitator:
+    build: ./facilitator
+    env_file: [./facilitator/.env]
+    environment:
+      PORT: 4022
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["node", "dist/src/api/main.js"]
+    env_file: [./backend/.env]
+    environment:
+      DATABASE_URL: postgres://hederatube:${POSTGRES_PASSWORD:-hederatube}@postgres:5432/hederatube
+      REDIS_URL: redis://redis:6379
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: http://garage:3900
+      FACILITATOR_URL: http://facilitator:4022
+      PORT: 4021
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      garage: { condition: service_started }
+      facilitator: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:4021/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hederatube-api.rule=PathPrefix(`/api`) || PathPrefix(`/stream`)
+      - traefik.http.routers.hederatube-api.priority=10
+      - traefik.http.services.hederatube-api.loadbalancer.server.port=4021
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["node", "dist/src/worker/main.js"]
+    env_file: [./backend/.env]
+    environment:
+      DATABASE_URL: postgres://hederatube:${POSTGRES_PASSWORD:-hederatube}@postgres:5432/hederatube
+      REDIS_URL: redis://redis:6379
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: http://garage:3900
+      FACILITATOR_URL: http://facilitator:4022
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      garage: { condition: service_started }
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_PRIVY_APP_ID: ${VITE_PRIVY_APP_ID:-}
+        VITE_API_MODE: real
+        VITE_ONBOARD_MODE: real
+        VITE_DEV_CONTROLS: ${VITE_DEV_CONTROLS:-true}
+        VITE_WORLD_VERIFY_MODE: simulate
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.hederatube-web.rule=PathPrefix(`/`)
+      - traefik.http.routers.hederatube-web.priority=1
+      - traefik.http.services.hederatube-web.loadbalancer.server.port=80
+    restart: unless-stopped
+
+secrets:
+  garage_rpc_secret:
+    file: ./secrets/garage_rpc_secret
+  garage_admin_token:
+    file: ./secrets/garage_admin_token
+
+volumes:
+  garage-meta:
+  garage-data:
+  pgdata:
+  redisdata:

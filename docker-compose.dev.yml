@@ -1,0 +1,28 @@
+# Local infrastructure only (api/worker/facilitator run with pnpm dev). Ports are published.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_DB: hederatube
+    ports: ["5432:5432"]
+    volumes: [pgdata-dev:/var/lib/postgresql/data]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  garage:
+    image: dxflrs/garage:v2.1.0
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - garage-dev:/var/lib/garage
+    secrets: [garage_rpc_secret, garage_admin_token]
+    ports: ["3900:3900", "3903:3903"]
+secrets:
+  garage_rpc_secret:
+    file: ./secrets/garage_rpc_secret
+  garage_admin_token:
+    file: ./secrets/garage_admin_token
+volumes:
+  pgdata-dev:
+  garage-dev:
