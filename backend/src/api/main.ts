@@ -5,6 +5,12 @@ import { closeDb, runMigrations } from "../shared/db/client.js";
 import { closeQueues } from "../shared/queues.js";
 import { storage } from "../shared/storage.js";
 
+// One failed request must not take the API (and, in the combined container, the worker) down.
+// Express 4 does not catch rejected async handlers, so anything a route forgets lands here.
+process.on("unhandledRejection", err => {
+  logger.error({ err }, "unhandled rejection");
+});
+
 async function main() {
   await runMigrations();
   if (env.STORAGE_DRIVER === "s3" && env.UPLOAD_MODE === "presign") {

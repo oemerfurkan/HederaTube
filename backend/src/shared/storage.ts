@@ -37,12 +37,20 @@ function streamToBuffer(stream: Readable): Promise<Buffer> {
 }
 
 /** Garage / any S3-compatible store (production). */
+/**
+ * S3-compatible stores (Garage, MinIO) do not report checksums the way AWS does for multipart
+ * objects. With the SDK's default "WHEN_SUPPORTED" integrity checks, reading back a file that was
+ * uploaded in parts fails with "Checksum mismatch" even though the bytes are intact.
+ */
+const compatibleChecksums = { requestChecksumCalculation: "WHEN_REQUIRED", responseChecksumValidation: "WHEN_REQUIRED" } as const;
+
 export function createS3Storage(): ObjectStorage {
   const client = new S3Client({
     endpoint: env.S3_ENDPOINT,
     region: env.S3_REGION,
     forcePathStyle: true,
     credentials: { accessKeyId: env.S3_ACCESS_KEY, secretAccessKey: env.S3_SECRET_KEY },
+    ...compatibleChecksums,
   });
   const publicClient = env.S3_PUBLIC_ENDPOINT
     ? new S3Client({
@@ -50,6 +58,7 @@ export function createS3Storage(): ObjectStorage {
         region: env.S3_REGION,
         forcePathStyle: true,
         credentials: { accessKeyId: env.S3_ACCESS_KEY, secretAccessKey: env.S3_SECRET_KEY },
+        ...compatibleChecksums,
       })
     : client;
   const Bucket = env.S3_BUCKET;

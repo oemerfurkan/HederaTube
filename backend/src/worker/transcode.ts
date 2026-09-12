@@ -17,9 +17,15 @@ export async function transcodeVideo(job: TranscodeJob): Promise<void> {
   const work = await mkdtemp(path.join(tmpdir(), "ht-src-"));
   const input = path.join(work, "source" + path.extname(job.sourceKey));
   try {
-    await writeFile(input, await storage.getBuffer(job.sourceKey));
+    // each stage logs, so a long transcode is distinguishable from a job that never started
+    log.info({ sourceKey: job.sourceKey }, "transcode started");
+    const source = await storage.getBuffer(job.sourceKey);
+    await writeFile(input, source);
+    log.info({ bytes: source.byteLength }, "source downloaded");
     const duration = await probeDuration(input);
+    const started = Date.now();
     const hls = await transcodeToHls(input);
+    log.info({ duration, segments: hls.segments.length, ms: Date.now() - started }, "ffmpeg finished, uploading");
     try {
       const durations = parseExtinf(hls.playlist);
       if (durations.length !== hls.segments.length) throw new Error(`playlist lists ${durations.length} segments, found ${hls.segments.length} files`);

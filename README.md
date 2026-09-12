@@ -7,6 +7,8 @@
 
 **Pay-per-second video on Hedera. Lock the price of a video in USDC, pay only for the seconds you watch, get the rest back automatically.**
 
+[Live app](https://hederatube.xyz) · [Source](https://github.com/oemerfurkan/HederaTube) · [X](https://x.com/oemerfurkan)
+
 HederaTube is a video platform where viewers pay creators per 5-second chunk with off-chain signed vouchers, backed by a USDC escrow on Hedera. There is no subscription, no ads, and no per-request blockchain transaction: a viewing session costs the viewer one deposit at the start and one refund at the end, and the creator receives everything they earned in a single settlement transaction that can cover thousands of sessions.
 
 It is built on the open [x402](https://github.com/x402-foundation/x402) payment standard, for which this repository contributes a native Hedera implementation of the `batch-settlement` scheme (smart contracts, SDK, spec and examples).
@@ -16,6 +18,7 @@ It is built on the open [x402](https://github.com/x402-foundation/x402) payment 
 ## Table of contents
 
 - [What HederaTube is](#what-hederatube-is)
+- [Live deployment](#live-deployment)
 - [Privy and World ID in HederaTube](#privy-and-world-id-in-hederatube)
   - [Privy: embedded wallets that sign without prompts](#privy-embedded-wallets-that-sign-without-prompts)
   - [World ID: one human, one creator channel](#world-id-one-human-one-creator-channel)
@@ -51,6 +54,21 @@ It is built on the open [x402](https://github.com/x402-foundation/x402) payment 
 **Why Hedera.** Fees are fixed and low, finality is seconds, USDC is a native Hedera Token Service (HTS) token, and the network's system contracts let a smart contract verify any Hedera account signature and pull HTS tokens via allowances. That makes payment channels practical without EVM wallet conventions like Permit2 or ERC-3009.
 
 **Why payment channels.** Per-request on-chain payments cannot price a 5-second chunk at a fraction of a cent: the fee would exceed the price and the latency would stall playback. A channel turns a session of N chunks into two transactions (deposit and refund) plus one shared settlement transaction per creator.
+
+## Live deployment
+
+HederaTube runs on Hedera testnet at **[hederatube.xyz](https://hederatube.xyz)**.
+
+| Service | Address | Notes |
+| --- | --- | --- |
+| Web app | [hederatube.xyz](https://hederatube.xyz) | The frontend; `/api` and `/stream` on the same host go to the backend |
+| Backend | [backend.hederatube.xyz](https://backend.hederatube.xyz) | API and stream resource server (`/api/health`) |
+| Facilitator | [facilitator.hederatube.xyz](https://facilitator.hederatube.xyz) | x402 facilitator for the Hedera batch-settlement scheme (`/supported`, `/health`) |
+
+- Source: [github.com/oemerfurkan/HederaTube](https://github.com/oemerfurkan/HederaTube)
+- X: [@oemerfurkan](https://x.com/oemerfurkan)
+
+The browser only ever talks to `hederatube.xyz`: API and stream requests stay on the same origin, so no CORS setup is involved. The facilitator holds no receiver-authorizer key, so everything it submits already carries a payer or authorizer signature; its operator account still pays the gas for whatever it submits. Deployment settings are in [docs/deploy-dokploy.md](docs/deploy-dokploy.md).
 
 ## Privy and World ID in HederaTube
 
@@ -542,6 +560,7 @@ The script deploys both contracts with unlimited automatic token associations, a
 
 ## Further reading
 
+- [HederaTube on GitHub](https://github.com/oemerfurkan/HederaTube) and [@oemerfurkan on X](https://x.com/oemerfurkan)
 - [Frontend README](frontend/README.md), [Backend README](backend/README.md), [Facilitator README](facilitator/README.md)
 - [World ID Selfie Check integration feedback](docs/world-id-selfie-check-feedback.md)
 - [Hedera batch-settlement scheme specification](x402/specs/schemes/batch-settlement/scheme_batch_settlement_hedera.md), the [generic scheme](x402/specs/schemes/batch-settlement/scheme_batch_settlement.md) and the [EVM binding](x402/specs/schemes/batch-settlement/scheme_batch_settlement_evm.md) it mirrors

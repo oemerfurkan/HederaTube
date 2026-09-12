@@ -61,7 +61,7 @@ The configs pin Node 22.19 and pnpm 11.1.1, install and build only the `x402` pa
 
 ## 3. Facilitator
 
-No domain: it must stay internal, because `/settle` has no authentication of its own. Port 4022.
+Port 4022. The live deployment exposes it at `facilitator.hederatube.xyz`; it can also stay internal with no domain. `/settle` has no authentication of its own, so a public facilitator must never hold a receiver-authorizer key, and its operator account pays the gas for anything submitted to it.
 
 | Variable | Value |
 | --- | --- |
@@ -89,7 +89,7 @@ Domains: the public hostname with path `/api`, and the same hostname with path `
 | `S3_REGION` | `garage` (matches `s3_region` in the template's `garage.toml`) |
 | `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` | `hederatube` and the key from step 1 |
 | `UPLOAD_MODE` | `proxy` |
-| `FACILITATOR_URL` | `http://<facilitator app name>:4022` (the App Name on the facilitator's General tab) |
+| `FACILITATOR_URL` | `http://<facilitator app name>:4022` (the App Name on the facilitator's General tab), or its public URL such as `https://facilitator.hederatube.xyz` |
 | `HEDERA_NETWORK`, `HEDERA_MIRROR_NODE_URL`, `HEDERA_JSON_RPC_URL`, `HEDERA_USDC_TOKEN_ID` | `hedera:testnet`, `https://testnet.mirrornode.hedera.com`, `https://testnet.hashio.io/api`, `0.0.429274` |
 | `HEDERA_OPERATOR_ACCOUNT_ID`, `HEDERA_OPERATOR_PRIVATE_KEY` | Faucet account (from your local `backend/.env`) |
 | `HEDERA_RECEIVER_AUTHORIZER_ACCOUNT_ID`, `HEDERA_RECEIVER_AUTHORIZER_PRIVATE_KEY` | Signs claims and refunds (from your local `backend/.env`) |

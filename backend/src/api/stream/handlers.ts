@@ -24,6 +24,12 @@ function parseRange(header: string | undefined): { start: number; end?: number }
   return { start: Number(m[1]), ...(m[2] ? { end: Number(m[2]) } : {}) };
 }
 
+/** Missing object in either driver: fs ENOENT, or an S3 NoSuchKey / 404. */
+function isMissingObject(err: unknown): boolean {
+  const e = err as { code?: string; name?: string; Code?: string; $metadata?: { httpStatusCode?: number } } | undefined;
+  return e?.code === "ENOENT" || e?.name === "NoSuchKey" || e?.Code === "NoSuchKey" || e?.$metadata?.httpStatusCode === 404;
+}
+
 /** Free path: pipe the segment (Range aware) and clean up when the client goes away. */
 async function streamSegment(req: Request, res: Response, key: string): Promise<void> {
   const obj = await storage.getObject(key, parseRange(req.headers.range));
@@ -59,6 +65,24 @@ export function streamRouter(): Router {
   });
 
   router.get("/:videoId/seg-:index(\\d+).ts", async (req, res) => {
+    try {
+      await serveSegment(req, res);
+    } catch (err) {
+      // Express 4 does not catch rejected handlers: without this, one unreadable segment exits the
+      // process. A status >= 400 also tells the x402 middleware not to settle, so nothing is charged.
+      if (isMissingObject(err)) {
+        logger.warn({ path: req.path }, "segment missing from storage");
+        if (!res.headersSent) res.status(404).type("text/plain").send("segment not available");
+        else res.end();
+        return;
+      }
+      logger.error({ err, path: req.path }, "segment request failed");
+      if (!res.headersSent) res.status(500).type("text/plain").send("segment unavailable");
+      else res.end();
+    }
+  });
+
+  async function serveSegment(req: Request, res: Response): Promise<void> {
     const ctx = ctxOr404(res);
     if (!ctx || ctx.segmentIndex === undefined) return;
     const { session, video } = ctx;
@@ -96,7 +120,7 @@ export function streamRouter(): Router {
         return;
       }
     }
-  });
+  }
 
   // Refund payloads are settled by the scheme (skipHandler); anything else that reaches here is unpaid.
   router.get("/:videoId/close", (_req, res) => {
