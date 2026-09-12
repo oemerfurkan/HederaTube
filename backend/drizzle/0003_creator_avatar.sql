@@ -1,0 +1,1 @@
+ALTER TABLE "creators" ADD COLUMN "avatar_key" text;

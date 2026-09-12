@@ -74,19 +74,25 @@ export function WalletPanel({ showChannelLink = true, showDisconnect = true }: {
               <ArrowRight size={16} className="text-muted-fg" />
             </Link>
           ) : null}
-          {showDisconnect ? (
-            <button
-              type="button"
-              onClick={() => void wallet.logout()}
-              className="flex h-9 items-center justify-between rounded-pill px-4 text-[13px] font-medium text-muted-fg transition-colors duration-[180ms] ease-ht hover:bg-surface-2 hover:text-destructive"
-            >
-              Disconnect wallet
-              <SignOut size={16} />
-            </button>
-          ) : null}
+          {showDisconnect ? <DisconnectRow /> : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** Quiet destructive row: muted until hovered, so leaving is available but never the loudest thing. */
+export function DisconnectRow() {
+  const wallet = useWallet();
+  return (
+    <button
+      type="button"
+      onClick={() => void wallet.logout()}
+      className="flex h-9 w-full items-center justify-between rounded-pill px-4 text-[13px] font-medium text-muted-fg transition-colors duration-[180ms] ease-ht hover:bg-surface-2 hover:text-destructive"
+    >
+      Disconnect wallet
+      <SignOut size={16} />
+    </button>
   );
 }
 

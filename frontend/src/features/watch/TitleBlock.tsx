@@ -33,7 +33,7 @@ export function TitleBlock({ video }: { video: Video }) {
       <h1 className="text-[20px] font-bold leading-7">{video.title}</h1>
       <div className="flex flex-wrap items-center gap-3">
         <Link to={`/channel/${video.creator.handle}`} className="flex items-center gap-3">
-          <Avatar size={40} />
+          <Avatar size={40} src={video.creator.avatar_url} />
           <span className="text-[16px] font-medium leading-[22px]">{video.creator.display_name}</span>
         </Link>
         <div className="ml-auto flex items-center gap-2">

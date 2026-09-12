@@ -73,6 +73,9 @@ export const api = {
   earnings: (address: string) => request<EarningsResponse>(`/api/me/earnings?address=${address}`),
   updateProfile: (body: { address: string; accountId?: string; displayName?: string; description?: string }) =>
     request<Me>("/api/me/profile", { method: "PUT", json: body }),
+  /** `image` is a small data URL (the page crops and resizes first); `null` removes the photo. */
+  updateAvatar: (body: { address: string; accountId?: string; image: string | null }) =>
+    request<Me>("/api/me/avatar", { method: "PUT", json: body }),
   channel: (handle: string) => request<ChannelResponse>(`/api/channel/${handle}`),
   likeState: (videoId: string, viewer: string) =>
     request<{ likes: number; liked: boolean }>(`/api/video/${videoId}/like?viewer=${viewer}`),

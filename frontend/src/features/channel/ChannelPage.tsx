@@ -12,7 +12,7 @@ export function ChannelPage() {
   return (
     <div className="grid gap-8">
       <header className="flex flex-wrap items-center gap-5">
-        <Avatar size={72} />
+        <Avatar size={72} src={c.creator.avatar_url} />
         <div className="grid gap-1">
           <h1 className="text-h1">{c.creator.display_name}</h1>
           <div className="flex flex-wrap items-center gap-3 text-small text-muted-fg">

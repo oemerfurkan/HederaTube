@@ -9,7 +9,7 @@ import { findAccount } from "../hedera.js";
 export type VideoOut = {
   id: string;
   creator_id: string;
-  creator: { handle: string; display_name: string; hedera_account_id: string };
+  creator: { handle: string; display_name: string; hedera_account_id: string; avatar_url: string };
   title: string;
   description: string;
   duration_seconds: number;
@@ -23,6 +23,13 @@ export type VideoOut = {
   views: number;
   likes: number;
 };
+
+/** Versioned URL of a creator's photo, or "" when none is set (clients fall back to the glyph). */
+export function avatarUrl(creator: Pick<CreatorRow, "id" | "avatar_key">): string {
+  if (!creator.avatar_key) return "";
+  const version = creator.avatar_key.split("/").pop()?.split(".")[0] ?? "0";
+  return `/api/creators/${creator.id}/avatar?v=${version}`;
+}
 
 export function thumbnailUrl(video: VideoRow): string {
   return video.thumbnail_key ? `/api/videos/${video.id}/thumbnail` : "";
@@ -38,7 +45,7 @@ export async function toVideo(video: VideoRow, creator?: CreatorRow): Promise<Vi
   return {
     id: video.id,
     creator_id: video.creator_id,
-    creator: { handle: c.handle, display_name: c.display_name, hedera_account_id: c.hedera_account_id },
+    creator: { handle: c.handle, display_name: c.display_name, hedera_account_id: c.hedera_account_id, avatar_url: avatarUrl(c) },
     title: video.title,
     description: video.description,
     duration_seconds: video.duration_seconds,
@@ -156,7 +163,13 @@ export async function meOf(address: string) {
     // "verified" means a World ID Selfie Check backs this wallet, not merely that a creator row exists
     verified: !!creator?.world_nullifier_hash,
     creator: creator
-      ? { handle: creator.handle, display_name: creator.display_name, description: creator.description, hedera_account_id: creator.hedera_account_id }
+      ? {
+          handle: creator.handle,
+          display_name: creator.display_name,
+          description: creator.description,
+          hedera_account_id: creator.hedera_account_id,
+          avatar_url: avatarUrl(creator),
+        }
       : null,
     spent_today: row?.spent ?? "0",
   };
@@ -209,6 +222,7 @@ export async function channelOf(handle: string) {
       display_name: creator.display_name,
       description: creator.description,
       hedera_account_id: creator.hedera_account_id,
+      avatar_url: avatarUrl(creator),
     },
     videos: await toVideos(vids.filter(v => v.status === "ready" && BigInt(v.total_price) > 0n)),
     total_earned: ss.reduce((a, s) => a + BigInt(s.consumed_amount), 0n).toString(),
@@ -250,7 +264,7 @@ export async function ensureCreator(address: string, accountIdHint?: string) {
 }
 
 /** Channel name and description as the creator wants them shown. */
-export async function updateCreatorProfile(creatorId: string, patch: { display_name?: string; description?: string }) {
+export async function updateCreatorProfile(creatorId: string, patch: { display_name?: string; description?: string; avatar_key?: string | null }) {
   const [row] = await db.update(creators).set(patch).where(eq(creators.id, creatorId)).returning();
   return row;
 }

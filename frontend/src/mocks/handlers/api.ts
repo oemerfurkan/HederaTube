@@ -95,7 +95,7 @@ function meOf(db: MockDb, address: string): Me {
     address,
     verified: !!creator?.world_nullifier_hash,
     creator: creator
-      ? { handle: creator.handle, display_name: creator.display_name, description: creator.description ?? "", hedera_account_id: creator.hedera_account_id }
+      ? { handle: creator.handle, display_name: creator.display_name, description: creator.description ?? "", hedera_account_id: creator.hedera_account_id, avatar_url: creator.avatar_url ?? "" }
       : null,
     spent_today: spent.toString(),
   };
@@ -271,6 +271,16 @@ export const apiHandlers = [
     if (!creator) return HttpResponse.json({ error: "This wallet has no Hedera account yet" }, { status: 409 });
     if (typeof body.displayName === "string" && body.displayName.trim()) creator.display_name = body.displayName.trim();
     if (typeof body.description === "string") creator.description = body.description.trim();
+    persist();
+    return HttpResponse.json(meOf(db, body.address));
+  }),
+
+  http.put("/api/me/avatar", async ({ request }) => {
+    const db = loadDb();
+    const body = (await request.json()) as { address: string; image: string | null };
+    const creator = creatorForAddress(db, body.address);
+    if (!creator) return HttpResponse.json({ error: "This wallet has no Hedera account yet" }, { status: 409 });
+    creator.avatar_url = body.image ?? undefined;
     persist();
     return HttpResponse.json(meOf(db, body.address));
   }),

@@ -24,6 +24,7 @@ export type CreatorRow = {
   handle: string;
   display_name: string;
   description?: string;
+  avatar_url?: string;
   world_nullifier_hash: string | null;
   verified_at: string | null;
   subscribers: number;

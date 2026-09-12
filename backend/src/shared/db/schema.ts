@@ -12,6 +12,8 @@ export const creators = pgTable("creators", {
   handle: text("handle").notNull().unique(),
   display_name: text("display_name").notNull(),
   description: text("description").notNull().default(""),
+  /** Storage key of the channel photo; the file name carries a version so URLs can be cached forever. */
+  avatar_key: text("avatar_key"),
   world_nullifier_hash: text("world_nullifier_hash").unique(),
   verified_at: timestamp("verified_at", { withTimezone: true }),
   subscribers: integer("subscribers").notNull().default(0),

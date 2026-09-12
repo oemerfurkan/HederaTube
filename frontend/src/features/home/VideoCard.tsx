@@ -37,7 +37,7 @@ export function VideoCard({ video }: { video: Video }) {
         ) : null}
       </div>
       <div className="relative flex gap-3">
-        <Avatar size={36} />
+        <Avatar size={36} src={video.creator.avatar_url} />
         <div className="min-w-0">
           <h3 className="line-clamp-2 text-[16px] font-medium leading-[22px]">{video.title}</h3>
           <div className="mt-1 text-[14px] leading-5 text-muted-fg">{video.creator.display_name}</div>

@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/mark-dark.svg">
+  <img src="docs/brand/mark-light.svg" alt="HederaTube mark" width="54" height="60">
+</picture>
+
 # HederaTube
 
 **Pay-per-second video on Hedera. Lock the price of a video in USDC, pay only for the seconds you watch, get the rest back automatically.**
@@ -55,7 +60,7 @@ Two partner integrations carry the product. Privy makes a pay-per-chunk stream u
 
 A viewing session signs one deposit authorization and then one EIP-712 voucher per 5-second chunk: a five-minute video is about sixty signatures. No wallet extension can ask the user sixty times, so HederaTube runs entirely on Privy's embedded wallet.
 
-- **Login is the account.** Google, email or an external wallet through `PrivyProvider`; Privy creates an embedded secp256k1 wallet on login (`embeddedWallets.ethereum.createOnLogin`) and a Solana wallet alongside it. Hedera testnet is registered as a custom EVM chain (chain id 296, Hashio JSON-RPC) through `supportedChains` and `defaultChain`, so the same wallet works on Hedera without any Hedera-specific tooling on the user's side.
+- **Login is the account.** Google or email through `PrivyProvider` (external wallets are deliberately not offered, since they cannot sign vouchers without a prompt); Privy creates an embedded secp256k1 wallet on login (`embeddedWallets.ethereum.createOnLogin`) and a Solana wallet alongside it. Hedera testnet is registered as a custom EVM chain (chain id 296, Hashio JSON-RPC) through `supportedChains` and `defaultChain`, so the same wallet works on Hedera without any Hedera-specific tooling on the user's side.
 - **Silent signing.** The wallet is configured with `showWalletUIs: false`. `src/payments/privySigner.ts` signs the raw 32-byte EIP-712 digest of each voucher and deposit authorization with Privy's `secp256k1_sign` RPC, never `personal_sign`, because the EIP-191 prefix would break on-chain verification by Hedera's account service. Each signature is recovered and checked against the wallet address before it leaves the browser. The result is a stream that pays continuously with zero prompts: the user presses play once.
 - **One-time onboarding through the same provider.** The EVM address of a fresh embedded wallet has no Hedera account. The backend faucet sends it HBAR, which creates the account with unlimited automatic token associations; the app then sends `associate()` on USDC (IHRC-719) and one `approve` on the token's ERC-20 facade through the Privy provider (`switchChain(296)` then `eth_sendTransaction`). These are the only transactions the viewer ever pays gas for. Everything during playback is off-chain.
 - **Nothing to lose, nothing to install.** The viewer never holds a seed phrase, never switches networks by hand, and never sees a transaction during playback. The wallet popover shows the Hedera account, the EVM address and the Solana address (read from Privy's linked accounts) for funding, and the balance is read straight from the Mirror Node.
@@ -190,7 +195,7 @@ sequenceDiagram
 
 Step by step, as the viewer sees it:
 
-1. **Connect.** The header offers Google, email or wallet login through Privy, which creates the embedded wallet that signs everything from here on.
+1. **Connect.** The header offers Google or email login through Privy, which creates the embedded wallet that signs everything from here on.
 2. **Onboarding.** The wallet's EVM address has no Hedera account yet. The backend faucet sends it a few HBAR, which auto-creates the account. The app then associates the account with USDC (`associate()` on the token, IHRC-719) and sends one `approve` on USDC's ERC-20 facade through the Hedera JSON-RPC relay, granting the deposit collector an HTS allowance. These are the only transactions the viewer ever signs and pays for. All steps are skipped on later visits.
 3. **Browse.** The home grid shows videos with their total price. The wallet pill shows the USDC balance read from the Mirror Node; the wallet popover behind the avatar lists the Hedera, EVM and Solana deposit addresses.
 4. **Lock.** On the watch page a play circle covers the poster; clicking anywhere on it opens a session, then pays the lock route once. The client SDK sees an empty channel and builds a deposit for exactly the video price. The circle spins for about four seconds while the facilitator submits the deposit and waits for consensus (it no longer waits for the Mirror Node to catch up).

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Amount, Badge, Button, UsdcMark, cn, toast } from "@/design/ui";
-import { useEarnings, useMe, useUpdateProfile } from "@/api/hooks";
+import { Amount, Avatar, Badge, Button, UsdcMark, cn, toast } from "@/design/ui";
+import { useEarnings, useMe, useUpdateAvatar, useUpdateProfile } from "@/api/hooks";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import { WalletPanel } from "@/features/wallet/WalletPanel";
 import { ActiveLocks } from "@/features/wallet/ActiveLocks";
@@ -171,6 +171,7 @@ function ProfileTab() {
 
   return (
     <div className="grid max-w-[560px] gap-5">
+      <AvatarField />
       <label className="grid gap-2 text-[13px] font-medium">
         Channel name
         <input value={name} onChange={e => setName(e.target.value)} maxLength={60} placeholder="Your channel" className={cn(field, "h-11")} />
@@ -197,6 +198,99 @@ function ProfileTab() {
           Save
         </Button>
       </div>
+    </div>
+  );
+}
+
+const AVATAR_PX = 256;
+
+/** Center-crops to a square and downsizes to 256 px JPEG, so any photo becomes a small upload. */
+async function toAvatarDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = AVATAR_PX;
+  canvas.height = AVATAR_PX;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas is not available");
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, AVATAR_PX, AVATAR_PX);
+  bitmap.close();
+  return canvas.toDataURL("image/jpeg", 0.88);
+}
+
+/** Channel photo: shown on every video card, on the watch page, the channel page and the header. */
+function AvatarField() {
+  const wallet = useWallet();
+  const me = useMe(wallet.address);
+  const save = useUpdateAvatar();
+  const input = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string>();
+  const current = preview ?? me.data?.creator?.avatar_url;
+
+  const pick = async (file: File) => {
+    if (!wallet.address) return;
+    if (!file.type.startsWith("image/")) return toast("Pick an image file");
+    try {
+      const image = await toAvatarDataUrl(file);
+      setPreview(image);
+      await save.mutateAsync({ address: wallet.address, accountId: wallet.accountId, image });
+      toast("Photo updated");
+    } catch (error) {
+      setPreview(undefined);
+      toast(error instanceof Error ? error.message : "Could not update the photo");
+    }
+  };
+
+  const remove = async () => {
+    if (!wallet.address) return;
+    try {
+      await save.mutateAsync({ address: wallet.address, accountId: wallet.accountId, image: null });
+      setPreview(undefined);
+      toast("Photo removed");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not remove the photo");
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-4">
+      <button
+        type="button"
+        onClick={() => input.current?.click()}
+        aria-label="Change channel photo"
+        className="group relative shrink-0 rounded-pill"
+      >
+        <Avatar size={88} src={current} />
+        <span className="absolute inset-0 grid place-items-center rounded-pill bg-black/55 text-[12px] font-medium text-white opacity-0 transition-opacity duration-[180ms] ease-ht group-hover:opacity-100">
+          Change
+        </span>
+      </button>
+      <div className="grid gap-2">
+        <span className="text-[13px] font-medium">Channel photo</span>
+        <span className="text-[12px] leading-[18px] text-muted-fg">Square crop, shown next to your name everywhere.</span>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => input.current?.click()} loading={save.isPending}>
+            {current ? "Change photo" : "Upload photo"}
+          </Button>
+          {current ? (
+            <Button variant="ghost" size="sm" onClick={() => void remove()} disabled={save.isPending}>
+              Remove
+            </Button>
+          ) : null}
+        </div>
+      </div>
+      <input
+        ref={input}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        hidden
+        onChange={e => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) void pick(file);
+        }}
+      />
     </div>
   );
 }

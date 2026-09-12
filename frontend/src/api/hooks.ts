@@ -65,6 +65,19 @@ export function useUpdateProfile() {
   });
 }
 
+/** Replaces or removes the channel photo, then refreshes every surface that shows it. */
+export function useUpdateAvatar() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { address: string; accountId?: string; image: string | null }) => api.updateAvatar(body),
+    onSuccess: (_data, body) => {
+      void client.invalidateQueries({ queryKey: queryKeys.me(body.address) });
+      void client.invalidateQueries({ queryKey: queryKeys.videos });
+      void client.invalidateQueries({ queryKey: ["channel"] });
+    },
+  });
+}
+
 export function useEarnings(address: string | undefined) {
   return useQuery({
     queryKey: queryKeys.earnings(address ?? ""),

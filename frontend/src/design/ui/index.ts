@@ -15,5 +15,6 @@ export { Spinner } from "./Spinner";
 export { Toaster, toast } from "./Toast";
 export { RollingNumber } from "./RollingNumber";
 export { ChainMark } from "./ChainMark";
+export { Mark, MARK_VIEWBOX, MARK_STEMS, MARK_CHEVRON } from "./Logo";
 export type { Chain } from "./ChainMark";
 export { cn } from "./cn";

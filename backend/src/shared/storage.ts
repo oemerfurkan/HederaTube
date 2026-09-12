@@ -2,7 +2,7 @@ import { GetObjectCommand, PutBucketCorsCommand, PutObjectCommand, S3Client } fr
 import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createReadStream, createWriteStream } from "node:fs";
-import { mkdir, stat } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import type { Readable } from "node:stream";
@@ -126,7 +126,7 @@ export function createFsStorage(root = env.STORAGE_FS_DIR): ObjectStorage {
       const file = resolve(key);
       await mkdir(path.dirname(file), { recursive: true });
       if (Buffer.isBuffer(body)) {
-        await pipeline(bufferStream(body), createWriteStream(file));
+        await writeFile(file, body);
       } else {
         await pipeline(body, createWriteStream(file));
       }
@@ -140,15 +140,11 @@ export function createFsStorage(root = env.STORAGE_FS_DIR): ObjectStorage {
   };
 }
 
-function bufferStream(buf: Buffer): Readable {
-  const { Readable } = require("node:stream") as typeof import("node:stream");
-  return Readable.from([buf]);
-}
-
 export const storage: ObjectStorage = env.STORAGE_DRIVER === "s3" ? createS3Storage() : createFsStorage();
 
 export const objectKeys = {
   segment: (videoId: string, index: number) => `videos/${videoId}/seg-${String(index).padStart(4, "0")}.ts`,
   thumbnail: (videoId: string) => `videos/${videoId}/thumb.jpg`,
+  avatar: (creatorId: string, version: number, ext: string) => `avatars/${creatorId}/${version}.${ext}`,
   source: (videoId: string, name: string) => `uploads/${videoId}/${name.replace(/[^\w.\-]+/g, "_")}`,
 };

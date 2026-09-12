@@ -10,7 +10,7 @@ import { getTokenBalance } from "@/lib/mirror";
 import { deriveDevSolanaAddress } from "@/lib/solana";
 import { useBalanceQuery } from "@/api/hooks";
 
-export type LoginMethod = "google" | "email" | "wallet";
+export type LoginMethod = "google" | "email";
 export type WalletStatus = "disconnected" | "connecting" | "onboarding" | "ready";
 
 export type WalletContextValue = {
@@ -289,7 +289,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         appId={PRIVY_APP_ID}
         config={{
           appearance: { theme: "dark", accentColor: "#8259EF", walletChainType: "ethereum-and-solana" },
-          loginMethods: ["google", "email", "wallet"],
+          loginMethods: ["google", "email"],
           embeddedWallets: {
             ethereum: { createOnLogin: "users-without-wallets" },
             solana: { createOnLogin: "all-users" },

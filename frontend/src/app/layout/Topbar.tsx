@@ -39,7 +39,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             ) : null}
             <BalancePill />
             <button type="button" onClick={wallet.openSheet} className="grid size-10 place-items-center rounded-pill" aria-label="Wallet">
-              <Avatar size={40} />
+              <Avatar size={40} src={me.data?.creator?.avatar_url} />
             </button>
           </>
         ) : (
