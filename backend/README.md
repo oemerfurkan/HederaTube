@@ -26,7 +26,7 @@ Prerequisites: Postgres and Redis reachable (`brew services start postgresql@14 
 PATH for the worker. `STORAGE_DRIVER=fs` keeps objects under `./storage`; `s3` targets Garage.
 
 Then point the frontend at it: `VITE_API_MODE=real`, `VITE_ONBOARD_MODE=real`,
-`VITE_MIRROR_CONTRACT_CALL_URL=https://testnet.mirrornode.hedera.com`, `VITE_DEV_CONTROLS=true`.
+`VITE_MIRROR_CONTRACT_CALL_URL=https://testnet.mirrornode.hedera.com`.
 
 ## Verify against testnet
 
@@ -60,7 +60,8 @@ authorize claims and refunds; the facilitator must not advertise one.
 
 ## Notes
 
-- World ID: `WORLD_VERIFY_MODE=simulate` accepts `proof.nullifier_hash` and enforces the unique index; `real` is a stub.
+- World ID: `WORLD_VERIFY_MODE=real` signs each IDKit request with `WORLD_RP_SIGNING_KEY` for `WORLD_RP_ID` (`POST /api/verify/world/request`) and forwards the proof to World's v4 verify endpoint (`POST /api/verify/world`), storing the nullifier under the unique index on `creators`. `simulate` derives a nullifier from the wallet instead. Only the `.env` file is read; `.env-local` is the tracked template.
+- Settlement runs on the interval and also a few seconds after every session close (`requestSettlementSoon`, one coalesced job).
 - Faucet drips HBAR only (`FAUCET_HBAR`), once per address; USDC is not dripped.
 - `UPLOAD_MODE=proxy` streams browser uploads through `PUT /api/upload/put/:videoId/:name`; `presign` returns a presigned Garage URL and sets bucket CORS at startup.
 - Uploaded videos are transcoded by the worker; `ffprobe` duration overrides the client-reported one.

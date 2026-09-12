@@ -36,9 +36,9 @@ It is built on the open [x402](https://github.com/x402-foundation/x402) payment 
 
 ## What HederaTube is
 
-**For viewers.** Sign in with Google, email or a wallet (Privy embedded wallet). The app creates a Hedera account for you, drips a little HBAR, and asks for a one-time USDC allowance. From then on, every video shows its total price (typically a few thousandths of a dollar). Press **Lock and watch**: the full price is deposited into an escrow contract in one transaction. As you watch, each 5-second chunk is paid with a signed voucher that never touches the chain. When you leave, the unwatched part of the deposit is refunded to you in one transaction, and a receipt card shows what you paid, what went to the creator, and what came back. Creators can mark the first chunks as a free preview.
+**For viewers.** Sign in with Google, email or a wallet (Privy embedded wallet). The app creates a Hedera account for you, drips a little HBAR, and asks for a one-time USDC allowance. From then on, every video shows its total price (typically a few thousandths of a dollar). Press play: the full price is deposited into an escrow contract in one transaction while the button spins. As you watch, each 5-second chunk is paid with a signed voucher that never touches the chain. When you leave, the unwatched part of the deposit is refunded to you in one transaction, and a receipt card shows what you paid and what came back, with a link to the transaction.
 
-**For creators.** Verify once with World ID (simulated in this build), upload a video, let the worker transcode it into HLS, set a total price (the app suggests 0.0012 USDC per minute) and a free preview length, and publish. Earnings accumulate as vouchers and are swept to your Hedera account by a periodic settlement batch. A per-video session list shows who watched how much and whether their session is streaming, pending or settled.
+**For creators.** Verify once with a World ID Selfie Check (scan the QR with World App), name your channel, upload a video, let the worker transcode it into HLS, set a total price (the app suggests 0.0012 USDC per minute), and publish. Earnings accumulate as vouchers and are swept to your Hedera account by a periodic settlement batch. A per-video session list shows who watched how much and whether their session is streaming, pending or settled.
 
 **Why Hedera.** Fees are fixed and low, finality is seconds, USDC is a native Hedera Token Service (HTS) token, and the network's system contracts let a smart contract verify any Hedera account signature and pull HTS tokens via allowances. That makes payment channels practical without EVM wallet conventions like Permit2 or ERC-3009.
 
@@ -158,26 +158,26 @@ sequenceDiagram
 
 Step by step, as the viewer sees it:
 
-1. **Connect.** The wallet sheet offers Google, email or wallet login through Privy. Without a Privy app id the app generates a local secp256k1 key in IndexedDB instead.
-2. **Onboarding.** The wallet's EVM address has no Hedera account yet. The backend faucet sends it a few HBAR, which auto-creates the account. The app then sends one `approve` on USDC's ERC-20 facade through the Hedera JSON-RPC relay, granting the deposit collector an HTS allowance. This is the only transaction the viewer ever signs and pays for. Both steps are skipped on later visits.
-3. **Browse.** The home grid shows videos with their total price and a per-minute figure. The wallet pill shows the USDC balance read from the Mirror Node.
-4. **Lock.** On the watch page the cover reads "Lock 0.0012 USDC and watch" (or "Insufficient balance"). One click opens a session, then pays the lock route once. The client SDK sees an empty channel and builds a deposit for exactly the video price. A "Locking on Hedera…" state lasts a couple of seconds while the facilitator submits the deposit.
-5. **Watch.** Playback starts (free preview chunks first, if any). The custom hls.js loader routes the first segment of every priced chunk through the x402 fetch wrapper with a fresh cumulative voucher. The second segment of each chunk and any already-paid chunk stream free. Chunk ticks on the scrubber turn from "buffered" to "paid on chain" as charges land. Seeking only pays for chunks not yet paid.
+1. **Connect.** The header offers Google, email or wallet login through Privy. Without a Privy app id the app generates a local secp256k1 key in IndexedDB instead.
+2. **Onboarding.** The wallet's EVM address has no Hedera account yet. The backend faucet sends it a few HBAR, which auto-creates the account. The app then associates the account with USDC (`associate()` on the token, IHRC-719) and sends one `approve` on USDC's ERC-20 facade through the Hedera JSON-RPC relay, granting the deposit collector an HTS allowance. These are the only transactions the viewer ever signs and pays for. All steps are skipped on later visits.
+3. **Browse.** The home grid shows videos with their total price. The wallet pill shows the USDC balance read from the Mirror Node; the wallet popover behind the avatar lists the Hedera, EVM and Solana deposit addresses.
+4. **Lock.** On the watch page a play circle covers the poster; clicking anywhere on it opens a session, then pays the lock route once. The client SDK sees an empty channel and builds a deposit for exactly the video price. The circle spins for about four seconds while the facilitator submits the deposit and waits for consensus (it no longer waits for the Mirror Node to catch up).
+5. **Watch.** Playback starts (free preview chunks first, if any). The custom hls.js loader routes the first segment of every priced chunk through the x402 fetch wrapper with a fresh cumulative voucher. The second segment of each chunk and any already-paid chunk stream free. The overlay shows how much of the lock has been used so far. Seeking only pays for chunks not yet paid.
 6. **Interruption.** If a paid request fails (network, facilitator, signer), playback pauses at the last paid second with a banner and a retry button. An in-flight paid request is never aborted after the voucher has been sent, so client and server never disagree on the cumulative amount.
-7. **Leave.** Navigating away or the video ending closes the session: the engine waits for in-flight vouchers, pushes an optimistic receipt card, and sends a cooperative refund of `price − watched`. If the tab is closed instead, a keepalive request marks the session "closing" and the server-side sweeper refunds it. The wallet sheet lists active locks with a manual **Release** as a last resort.
-8. **Receipt.** The receipt card shows locked, watched, to-creator and refunded amounts with the refund transaction. When the settlement batch has claimed and settled the session, the receipt flips to "Settled" with the batch transaction. Receipts live outside the router so they survive navigation.
+7. **Leave.** Navigating away or the video ending closes the session: the engine waits for in-flight vouchers, pushes an optimistic receipt card, and sends a cooperative refund of `price − watched`. If the tab is closed instead, a keepalive request marks the session "closing" and the server-side sweeper refunds it. My channel lists active locks, reconciled against the server, with a manual **Release** as a last resort.
+8. **Receipt.** The receipt card shows the locked and refunded amounts and, as the hero line, what was paid, with a Receipt link to the refund transaction on HashScan. The settlement batch runs a few seconds after every close, so the card flips to "Settled" with the batch transaction shortly after. Receipts live outside the router so they survive navigation.
 
 ### Creator
 
-1. **Verify.** The `/verify` page runs World ID (IDKit v4). In this build the backend accepts a simulated proof and enforces one creator per nullifier hash. Verification creates the creator row with the wallet's Hedera account id, which must be able to receive USDC.
+1. **Verify.** A wallet that has not passed World ID's Selfie Check sees **Verify** in the header instead of Create. Pressing it asks the backend for a relying-party context signed with the portal's RP key, then IDKit shows a QR code to scan with World App (Selfie Check, credential 11, requested as a World ID 3.0 proof). The backend forwards the result to World's verifier and stores the RP-scoped nullifier on the creator row under a unique index, so one face cannot open a second channel. Without a World app id the build simulates the check.
 2. **Upload.** The `/upload` page asks for a presigned target, then streams the file either through the API upload proxy (default) or directly to Garage with a presigned URL. On completion the video enters `processing` and a transcode job is queued.
 3. **Transcode.** The worker runs ffmpeg: a single 720p rendition with 2.5-second segments and keyframes forced on segment boundaries, plus a thumbnail. Segment durations are read back from the playlist, the real duration comes from ffprobe, and the video becomes `ready`.
-4. **Publish.** The creator sets a total price and free preview chunks (up to 12). The UI suggests a price from the duration and rejects anything below the minimum for that length (at least one base unit per priced chunk and never below 0.0010 USDC).
-5. **Earn.** The `/me` page lists earnings per video: chunks served, earned, pending payout, status. The channel page lists videos and totals. Per-video session lists show viewers, paid amounts, watched percentage and a badge (streaming, pending, settled, free).
+4. **Publish.** The creator sets a total price while a Studio-style card on the right previews the file, its link and processing state. The UI suggests a price from the duration, shows the per-minute rate, and rejects anything below the minimum for that length (at least one base unit per priced chunk and never below 0.0010 USDC). Title and description travel with the publish call. Free preview chunks are supported by the server but not exposed in the upload form.
+5. **Earn.** My channel has Watch, Wallet, Earnings and Profile tabs: receipts and active locks, the wallet panel with disconnect, earnings per video (chunks served, earned, pending payout, status), and the channel name and description shown on cards and the channel page. The channel page lists videos and totals. Per-video session lists show viewers, paid amounts, watched percentage and a badge (streaming, pending, settled, free).
 
 ### Background settlement
 
-The worker runs a settlement job every `SETTLEMENT_INTERVAL_SECONDS` (default 60) and on demand from the sidebar's **Run settlement batch** control (`POST /api/dev/run-batch`):
+The worker runs a settlement job every `SETTLEMENT_INTERVAL_SECONDS` (default 60), a few seconds after any session closes (closes inside the window share one job), and on demand through `POST /api/dev/run-batch`:
 
 1. **Sweep.** Sessions marked `closing`, or `locked`/`streaming` with no activity for `ABANDONED_AFTER_SECONDS` (default 90), get a cooperative refund of `balance − charged` and are closed. A session whose lock never settled on chain is closed with nothing to refund.
 2. **Claim.** For each creator, channels with charges above `totalClaimed` are batched (up to `MAX_CLAIMS_PER_BATCH`), the receiver authorizer signs the `ClaimBatch`, and the facilitator calls `claimWithSignature`.
@@ -241,7 +241,7 @@ The full protocol, verification rules and error codes are in the [Hedera batch-s
 
 `frontend/` is Vite 7, React 19, TypeScript, Tailwind v4 with a small design-token system (`src/design/`), TanStack Query, Zustand, react-router 7, hls.js, GSAP for Flip transitions, Privy for auth and embedded wallets, IDKit for World ID.
 
-Routes: `/` (home grid with filter chips), `/watch/:videoId`, `/channel/:handle`, `/me` (earnings and sessions), `/verify`, `/upload`. A wallet sheet (balance, deposit panel, active locks, auto-approve toggle) and the receipt stack live in the app shell.
+Routes: `/` (home grid with header search and local search history), `/watch/:videoId`, `/channel/:handle`, `/me` (Watch, Wallet, Earnings, Profile), `/upload`. The wallet popover (balance, copyable Hedera / EVM / Solana deposit addresses, disconnect), the World ID verify button and the receipt stack live in the app shell.
 
 Payment internals (`src/payments/`):
 
@@ -250,10 +250,11 @@ Payment internals (`src/payments/`):
 - **`x402Client.ts`** builds one scheme and `x402Client` per session with `salt = keccak256(sessionId)`, IndexedDB channel storage, and a `depositStrategy` that only ever deposits exactly the announced `minDeposit` and refuses top-ups. Spend controls cap each payment at the per-chunk ceiling.
 - **`sessionMachine.ts`** is the session engine, a Zustand store outside React: `idle → locking → preview/streaming → interrupted → closing → closed`, plus `insufficient`. It opens the session, pays the lock, decides which segments need payment, applies `PAYMENT-RESPONSE` state, handles interrupt and retry, and runs the close/refund sequence.
 - **`hlsPaidLoader.ts`** is a custom hls.js fragment loader. Paid segments go through the engine's mutex-serialised x402 fetch; everything else is a plain fetch. `maxBufferLength` is 10 s, a two-chunk credit window, and hls.js retries are disabled so the engine owns error handling.
-- **`onboarding.ts` and `allowance.ts`** implement the first-run flow: faucet, wait for the account on the Mirror Node, then `approve(collector, int64max)` on the USDC ERC-20 facade with an explicit gas limit, polling until the allowance is visible.
+- **`onboarding.ts` and `allowance.ts`** implement the first-run flow: faucet, wait for the account on the Mirror Node, associate USDC (an approval on an unassociated account reverts), then `approve(collector, int64max)` on the USDC ERC-20 facade with an explicit gas limit, polling until the allowance is visible.
+- **`locks.ts`** reconciles locally stored channels against session receipts and releases a lock outside the player.
 - **`refundOnLeave.ts`** marks the session closing on `pagehide` with a keepalive request.
 
-**Mock mode.** With `VITE_API_MODE=mock` (default), MSW serves the whole API and stream in the browser: `src/mocks/` holds a localStorage-backed database, fixtures, `/api` and `/stream` handlers, a fake Mirror Node `contracts/call`, and `mocks/x402/channels.ts`, the server-side channel accounting the real backend reproduces. Demo HLS assets with a burnt-in clock are generated by `pnpm demo:assets`. The full pay flow can be exercised with no backend and no chain.
+**Mock mode.** With `VITE_API_MODE=mock` (real mode is the default), MSW serves the whole API and stream in the browser: `src/mocks/` holds a localStorage-backed database, fixtures, `/api` and `/stream` handlers, a fake Mirror Node `contracts/call`, and `mocks/x402/channels.ts`, the server-side channel accounting the real backend reproduces. Demo HLS assets with a burnt-in clock are generated by `pnpm demo:assets`. The full pay flow can be exercised with no backend and no chain.
 
 Tests (`vitest`): price math, IndexedDB channel storage, payment mutex, the paid loader, and a node end-to-end x402 flow against the mock.
 
@@ -299,7 +300,7 @@ Tests (`vitest`): price math, segment classification, playlist generation.
 | `POST` | `/verify` | `{ paymentPayload, paymentRequirements }` → `VerifyResponse` with the channel snapshot. Handles `deposit`, `voucher`, `refund`. |
 | `POST` | `/settle` | Same body → `SettleResponse` with the Hedera transaction id and `extra.channelState`. Handles `deposit`, `claim`, `settle`, `refund`. |
 
-Every contract call is simulated through the Mirror Node before submission (`SIMULATE_BEFORE_SEND`). Reads that follow a write poll the Mirror Node for up to 10 s because it lags consensus by a few seconds. If a transaction was submitted but its record cannot be fetched, `settlement_pending` is returned with the transaction id.
+Every contract call is simulated through the Mirror Node before submission (`SIMULATE_BEFORE_SEND`). Reads that follow a claim or settle poll the Mirror Node for up to 10 s because it lags consensus by a few seconds; the deposit path skips that wait (`mirrorLagPollMs: 0`) because HederaTube verifies vouchers against its own channel store. If a transaction was submitted but its record cannot be fetched, `settlement_pending` is returned with the transaction id.
 
 In HederaTube the facilitator runs **without** a receiver authorizer: the backend holds that key, so only the backend can authorize claims and refunds. The facilitator can optionally advertise its own authorizer for other servers, but it does not authenticate refund requests, so that mode is only for trusted servers.
 
@@ -363,7 +364,7 @@ No backend, no chain, no keys. MSW serves the API and stream in the browser.
 cd frontend && pnpm install && pnpm demo:assets && cp .env.example .env && pnpm dev
 ```
 
-Open `http://localhost:5173`. Connect the wallet (a local key is generated when `VITE_PRIVY_APP_ID` is empty), open a video, lock, watch the chunk ticks turn, leave to see the receipt, and press **Run settlement batch** in the sidebar to flip it to settled. **Reset mock data** clears the mock database.
+Set `VITE_API_MODE=mock` and `VITE_ONBOARD_MODE=mock` in `frontend/.env`. Open `http://localhost:5173`, connect the wallet (a local key is generated when `VITE_PRIVY_APP_ID` is empty), open a video, press play, leave to see the receipt. The mock settles closed sessions on its own schedule; `POST /api/dev/run-batch` is the manual trigger against a real backend.
 
 ### Option B: full local stack against Hedera testnet
 
@@ -393,7 +394,7 @@ cd backend && pnpm dev:api
 cd backend && pnpm dev:worker
 ```
 
-4. **Frontend in real mode.** In `frontend/.env` set `VITE_API_MODE=real`, `VITE_ONBOARD_MODE=real`, `VITE_MIRROR_CONTRACT_CALL_URL=https://testnet.mirrornode.hedera.com` and `VITE_DEV_CONTROLS=true`. Vite proxies `/api` and `/stream` to the backend.
+4. **Frontend in real mode** (the default in `.env.example`): `VITE_API_MODE=real`, `VITE_ONBOARD_MODE=real`, `VITE_MIRROR_CONTRACT_CALL_URL=https://testnet.mirrornode.hedera.com`, plus `VITE_PRIVY_APP_ID` and `VITE_WORLD_APP_ID`. Vite proxies `/api` and `/stream` to the backend.
 
 ```bash
 cd frontend && pnpm dev
@@ -409,7 +410,7 @@ cd backend && pnpm e2e:testnet
 
 ### Option C: production compose (Dokploy / Traefik)
 
-`docker-compose.yml` builds and runs Garage, Postgres, Redis, the facilitator, the API, the worker and the nginx-served web build. Traefik labels route `/api` and `/stream` to the API and everything else to the web container. Secrets and env come from `facilitator/.env`, `backend/.env`, the `secrets/garage_rpc_secret` and `secrets/garage_admin_token` files, and `POSTGRES_PASSWORD`, `S3_BUCKET`, `VITE_PRIVY_APP_ID` and `VITE_DEV_CONTROLS` in the environment. A one-shot `garage-init` container creates the bucket and access key.
+`docker-compose.yml` builds and runs Garage, Postgres, Redis, the facilitator, the API, the worker and the nginx-served web build. Traefik labels route `/api` and `/stream` to the API and everything else to the web container. Secrets and env come from `facilitator/.env`, `backend/.env`, the `secrets/garage_rpc_secret` and `secrets/garage_admin_token` files, and `POSTGRES_PASSWORD`, `S3_BUCKET`, `VITE_PRIVY_APP_ID`, `VITE_WORLD_APP_ID` and `VITE_WORLD_ENVIRONMENT` in the environment. A one-shot `garage-init` container creates the bucket and access key.
 
 ```bash
 docker compose up -d --build
@@ -421,17 +422,17 @@ docker compose up -d --build
 
 | Variable | Description |
 | --- | --- |
-| `VITE_API_MODE` | `mock` (MSW in the browser, default) or `real` (proxy `/api` and `/stream` to `VITE_API_TARGET`). |
+| `VITE_API_MODE` | `real` (default: proxy `/api` and `/stream` to `VITE_API_TARGET`) or `mock` (MSW in the browser). |
 | `VITE_API_TARGET` | Backend origin for real mode. |
 | `VITE_PRIVY_APP_ID` | Enables the Privy embedded wallet. Empty means a local dev key. |
 | `VITE_WALLET_MODE` | `privy` or `local`; defaults from the app id. |
 | `VITE_DEV_PRIVATE_KEY` | Local mode only: use this funded testnet key instead of generating one. |
 | `VITE_ONBOARD_MODE` | `mock` renders faucet and allowance as done; `real` runs them. |
-| `VITE_DEV_CONTROLS` | Show the settlement batch control against a real backend. |
-| `VITE_WORLD_VERIFY_MODE` | `simulate` (dev button posts a simulated proof) or `real`. |
+| `VITE_WORLD_APP_ID`, `VITE_WORLD_ACTION` | World app id and action from the Developer Portal. With the app id set, Verify opens IDKit; without it the check is simulated. |
+| `VITE_WORLD_ENVIRONMENT` | `production`, `staging` or `sandbox`: decides which World App the QR code opens. |
 | `VITE_HEDERA_NETWORK`, `VITE_MIRROR_NODE_URL`, `VITE_MIRROR_CONTRACT_CALL_URL`, `VITE_HASHIO_RPC` | Network endpoints. In mock mode contract calls go to `/mock-mirror`. |
 | `VITE_MOCK_CREATOR_ACCOUNT_ID`, `VITE_MOCK_RECEIVER_AUTHORIZER` | Values the mock 402s advertise. |
-| `VITE_WORLD_APP_ID`, `VITE_WORLD_ACTION`, `VITE_SQUID_INTEGRATOR_ID` | World ID and Squid deposit integrations (not active in this build). |
+| `VITE_WORLD_VERIFY_MODE`, `VITE_SQUID_INTEGRATOR_ID` | Legacy flags; the Squid deposit widget is not wired into the UI. |
 
 ### Backend (`backend/.env`)
 
@@ -450,7 +451,8 @@ docker compose up -d --build
 | `ABANDONED_AFTER_SECONDS` | Idle time before the sweeper refunds a session (default 90). |
 | `SETTLEMENT_INTERVAL_SECONDS`, `MAX_CLAIMS_PER_BATCH` | Settlement job cadence and batch size (defaults 60 and 25). |
 | `DEV_ENDPOINTS` | Expose `POST /api/dev/run-batch` (default true). |
-| `WORLD_VERIFY_MODE`, `WORLD_APP_ID` | `simulate` accepts any nullifier; `real` is a stub returning 501. |
+| `WORLD_VERIFY_MODE` | `real` verifies proofs with World; `simulate` derives a nullifier from the wallet and skips the proof. |
+| `WORLD_APP_ID`, `WORLD_RP_ID`, `WORLD_RP_SIGNING_KEY`, `WORLD_ACTION`, `WORLD_ENVIRONMENT` | World Developer Portal app id, relying-party id and 32-byte signing key (signs every IDKit request), the action name, and the environment the proofs come from. |
 | `SEED_CREATOR_ACCOUNT_ID`, `SEED_CREATOR_WALLET` | Demo creator used by the seed and as the scheme's default receiver. |
 
 ### Facilitator (`facilitator/.env`)
@@ -506,12 +508,12 @@ The script deploys both contracts with unlimited automatic token associations, a
 ## Status and limitations
 
 - **Testnet only.** Contracts are deployed and verified on `hedera:testnet`; mainnet is not deployed.
-- **World ID is simulated.** The backend accepts a simulated proof and enforces uniqueness by nullifier; real proof verification returns 501 until a World RP key is configured.
-- **Squid deposits and Withdraw are UI placeholders.** The deposit panel shows the destination account; the withdraw button does nothing yet. Live streams are not supported.
+- **World ID Selfie Check is a gated beta.** The flow is real (signed RP context, QR, proof verified by World), but the credential has to be enabled for the app by World; the sandbox app is used for testing. Without an app id the check is simulated.
+- **Deposits are by address, and there is no withdraw.** The wallet popover shows the Hedera, EVM and Solana addresses to fund; the Squid widget is not wired in and viewers withdraw through the escrow's own escape hatch. Live streams are not supported.
 - **Faucet drips HBAR only.** Viewers must obtain testnet USDC themselves.
 - **Single rendition.** Transcoding produces one 720p HLS rendition.
 - **Key types.** Viewer wallets are ECDSA (Privy or local). The scheme also supports ED25519 accounts, but only single-key accounts; threshold and key-list accounts are rejected.
-- **Mirror Node lag.** Channel reads and simulations lag consensus by a few seconds; the code polls and the client recovers via corrective 402s, but a very fast seek across many unpaid chunks will feel it.
+- **Mirror Node lag.** Channel reads and simulations lag consensus by a few seconds; claims and settles poll for it, the deposit path no longer waits, and the client recovers via corrective 402s.
 - **Facilitator refund authentication.** Do not enable the facilitator's own receiver authorizer unless every server using it is trusted.
 
 ## Further reading
