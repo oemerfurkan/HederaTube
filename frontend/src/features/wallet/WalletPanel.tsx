@@ -51,6 +51,15 @@ export function WalletPanel({ showChannelLink = true, showDisconnect = true }: {
         <span className="label-caps text-muted-fg">Balance</span>
         <Amount value={wallet.balance ?? 0n} className="text-[28px] font-bold leading-9 tracking-[-0.02em]" />
         <span className="text-[12px] leading-[18px] text-muted-fg">USDC · Hedera testnet</span>
+        <a
+          href="https://faucet.circle.com/"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex w-fit items-center gap-1 text-[12px] leading-[18px] font-medium text-chain-fg hover:underline"
+        >
+          Get testnet USDC from the Circle faucet
+          <ArrowSquareOut size={12} />
+        </a>
       </div>
 
       <section className="grid gap-2">

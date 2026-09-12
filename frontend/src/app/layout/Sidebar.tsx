@@ -10,8 +10,8 @@ const items = [
 ];
 
 const links = [
-  { label: "GitHub", href: "https://github.com/x402-foundation/x402" },
-  { label: "Twitter", href: "https://x.com/hedera" },
+  { label: "GitHub", href: "https://github.com/oemerfurkan/HederaTube" },
+  { label: "Twitter", href: "https://x.com/oemerfurkan" },
   { label: "Contract", href: `https://hashscan.io/testnet/contract/${ESCROW_ID}` },
 ];
 
