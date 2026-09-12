@@ -118,14 +118,15 @@ export async function buildPaymentMiddleware(): Promise<unknown> {
         const cls = classifySegment(ctx.session, ctx.segmentIndex);
         const delta = BigInt(extra.chargedAmount ?? "0");
         const cumulative = extra.channelState?.chargedCumulativeAmount;
-        const k = cls.kind === "paid" ? cls.k : ctx.session.chunks_consumed;
         if (delta > 0n && cls.kind === "paid" && cumulative !== undefined) {
           await recordCharge(ctx.session.id, cls.chunk, cls.pricedIndex, delta.toString(), cumulative);
         }
+        const paidChunks = cls.kind === "paid" ? [...new Set([...ctx.session.paid_chunks, cls.chunk])].sort((a, b) => a - b) : ctx.session.paid_chunks;
         await db
           .update(sessions)
           .set({
-            chunks_consumed: raw`greatest(${sessions.chunks_consumed}, ${k})`,
+            paid_chunks: paidChunks,
+            chunks_consumed: paidChunks.length,
             consumed_amount: cumulative !== undefined ? cumulative : sessions.consumed_amount,
             chunks_served: raw`greatest(${sessions.chunks_served}, ${cls.chunk + 1})`,
             status: "streaming",

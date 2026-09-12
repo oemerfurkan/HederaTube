@@ -5,6 +5,7 @@
   --bg: #ffffff;
   --surface: #ffffff;
   --surface-2: #f2f2f2;
+  --surface-3: #e5e5e5;
   --fg: #0f0f0f;
   --muted-fg: #606060;
   --border: #e5e5e5;
@@ -21,19 +22,21 @@
   --ring: rgba(255, 0, 0, 0.4);
   --destructive: #c4302b;
   --positive: #2ba640;
-  --pending: #c8a24a;
-
-  /* Chain means money. Guide locks purple; #C8A24A collides with the pending status color. */
-  --chain: #8259ef;
+  /* Chain means money: wallet, ledger, payments. Also the "pending, streaming" status color.
+     The design system's chainAccent theme option in the HederaTube project is teal (#00807B). */
+  --chain: #00807b;
   --chain-fg: color-mix(in oklab, var(--chain) 62%, black);
   --chain-soft: color-mix(in oklab, var(--chain) 12%, transparent);
+  /* Text on the Chain fill; recomputed at runtime for contrast (design/contrast.ts). */
   --chain-on: #ffffff;
+  --pending: var(--chain);
 }
 
 [data-theme="dark"] {
   --bg: #0f0f0f;
   --surface: #181818;
   --surface-2: #272727;
+  --surface-3: #3a3a3a;
   --fg: #f1f1f1;
   --muted-fg: #aaaaaa;
   --border: #303030;
@@ -57,6 +60,7 @@
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-fg: var(--fg);
   --color-muted-fg: var(--muted-fg);
   --color-border: var(--border);
@@ -116,19 +120,63 @@
 
   --animate-spin-ht: ht-spin 700ms linear infinite;
   --animate-chunk-tick: chunk-tick 1.2s ease-in-out infinite;
+  --animate-toast-in: ht-toast-in 220ms var(--ease-ht) both;
+  --animate-like-pop: ht-like-pop 340ms var(--ease-ht);
+  --animate-roll-up-in: ht-roll-up-in 260ms var(--ease-ht) both;
+  --animate-roll-up-out: ht-roll-up-out 260ms var(--ease-ht) both;
+  --animate-roll-down-in: ht-roll-down-in 260ms var(--ease-ht) both;
+  --animate-roll-down-out: ht-roll-down-out 260ms var(--ease-ht) both;
 
   @keyframes ht-spin {
     to {
       transform: rotate(360deg);
     }
   }
+  @keyframes ht-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.98);
+    }
+  }
+  @keyframes ht-like-pop {
+    40% {
+      transform: scale(1.35);
+    }
+    70% {
+      transform: scale(0.92);
+    }
+  }
+  @keyframes ht-roll-up-in {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+  }
+  @keyframes ht-roll-up-out {
+    to {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+  }
+  @keyframes ht-roll-down-in {
+    from {
+      opacity: 0;
+      transform: translateY(-100%);
+    }
+  }
+  @keyframes ht-roll-down-out {
+    to {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+  }
   @keyframes chunk-tick {
     0%,
     100% {
-      opacity: 1;
+      opacity: 0.45;
     }
     50% {
-      opacity: 0.45;
+      opacity: 0.9;
     }
   }
 }
@@ -168,6 +216,17 @@
   select {
     font: inherit;
     color: inherit;
+  }
+  /* Tailwind v4 preflight drops the browser default, so every control states its own cursor. */
+  button,
+  summary,
+  [role="button"],
+  label:has(input[type="checkbox"]),
+  label:has(input[type="radio"]) {
+    cursor: pointer;
+  }
+  :disabled {
+    cursor: not-allowed;
   }
   a {
     color: inherit;

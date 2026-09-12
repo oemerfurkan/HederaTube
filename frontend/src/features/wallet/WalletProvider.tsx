@@ -28,8 +28,6 @@ export type WalletContextValue = {
   sheetOpen: boolean;
   openSheet: () => void;
   closeSheet: () => void;
-  autoApprove: boolean;
-  setAutoApprove: (next: boolean) => void;
   getProvider?: () => Promise<Eip1193Provider>;
 };
 
@@ -53,21 +51,12 @@ type Bridge = {
   localSigner?: ClientHederaBatchSigner;
 };
 
-const AUTO_APPROVE_KEY = "ht:auto-approve";
-
 /** Shared state machine used by both wallet backends. */
 function useWalletCore(bridge: Bridge, mode: "privy" | "local"): WalletContextValue {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [onboarding, setOnboarding] = useState<OnboardingState>();
   const [accountId, setAccountId] = useState<string>();
   const [error, setError] = useState<string>();
-  const [autoApprove, setAutoApproveState] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(AUTO_APPROVE_KEY) !== "off";
-    } catch {
-      return true;
-    }
-  });
   const [mirrorBalance, setMirrorBalance] = useState<bigint>();
   const onboardingFor = useRef<string | undefined>(undefined);
 
@@ -164,15 +153,6 @@ function useWalletCore(bridge: Bridge, mode: "privy" | "local"): WalletContextVa
     sheetOpen,
     openSheet: () => setSheetOpen(true),
     closeSheet: () => setSheetOpen(false),
-    autoApprove,
-    setAutoApprove: next => {
-      setAutoApproveState(next);
-      try {
-        localStorage.setItem(AUTO_APPROVE_KEY, next ? "on" : "off");
-      } catch {
-        /* ignore */
-      }
-    },
     getProvider: bridge.getProvider,
   };
 }

@@ -1,22 +1,29 @@
 import { formatUsdc } from "@/lib/money";
 import { cn } from "./cn";
+import { UsdcMark } from "./UsdcMark";
 
-/** Every USDC figure: tabular-nums, four decimals, never animated digit by digit. */
+/**
+ * Every USDC figure: tabular-nums, four decimals, never animated digit by digit.
+ * The USDC brand mark replaces the written unit (design rule: amounts read as money at a glance).
+ */
 export function Amount({
   value,
-  unit = "USDC",
+  unit = true,
   className,
   decimals = 4,
+  markSize,
 }: {
   value: bigint | string | number;
-  unit?: string | null;
+  /** Show the USDC mark after the figure. */
+  unit?: boolean;
   className?: string;
   decimals?: number;
+  markSize?: number;
 }) {
   return (
-    <span className={cn("tabular", className)}>
+    <span className={cn("inline-flex items-center gap-1 tabular", className)}>
       {formatUsdc(value, decimals)}
-      {unit ? <span className="ml-1">{unit}</span> : null}
+      {unit ? <UsdcMark {...(markSize ? { size: markSize } : {})} /> : null}
     </span>
   );
 }

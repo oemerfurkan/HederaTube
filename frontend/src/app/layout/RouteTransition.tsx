@@ -17,7 +17,7 @@ export function RouteTransition({ routeKey, children }: { routeKey: string; chil
     };
   }, [routeKey]);
   return (
-    <div ref={ref} className="mx-auto w-full max-w-[1440px]">
+    <div ref={ref} className="mx-auto w-full max-w-[2100px]">
       {children}
     </div>
   );

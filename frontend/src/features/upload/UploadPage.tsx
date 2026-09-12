@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { UploadSimple } from "@phosphor-icons/react";
-import { Badge, Button, cn } from "@/design/ui";
-import { useMe, useVideo } from "@/api/hooks";
+import { Badge, Button, UsdcMark, cn } from "@/design/ui";
+import { useVideo } from "@/api/hooks";
 import { api } from "@/api/client";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import { formatUsdc, parseUsdc } from "@/lib/money";
@@ -10,13 +10,12 @@ import { MAX_FREE_PREVIEW_CHUNKS, chunkCount, minTotalPrice, perMinute, pricedCh
 import { HEDERA_ENTITY_ID_REGEX } from "@/payments/x402-lite";
 
 const field =
-  "h-11 w-full rounded-pill border border-input bg-bg px-5 text-body outline-none transition-all duration-[180ms] ease-ht focus:border-primary focus:ring-[3px] focus:ring-ring";
+  "h-11 w-full rounded-pill border border-input bg-bg px-[18px] text-body outline-none transition-all duration-[180ms] ease-ht focus:border-primary focus:ring-[3px] focus:ring-ring";
 
 /** Guide §6.8. Single column, 720 px. The price field unlocks when the transcode reports the duration. */
 export function UploadPage() {
   const wallet = useWallet();
   const navigate = useNavigate();
-  const me = useMe(wallet.address);
   const [file, setFile] = useState<File>();
   const [progress, setProgress] = useState<number>();
   const [title, setTitle] = useState("");
@@ -61,10 +60,6 @@ export function UploadPage() {
   }, [duration, freeChunks, priceText]);
 
   if (wallet.status !== "ready") return <p className="text-small text-muted-fg">Connect a wallet first.</p>;
-  if (me.data && !me.data.verified) {
-    navigate("/verify", { replace: true });
-    return null;
-  }
 
   const pick = async (f: File) => {
     setFile(f);
@@ -73,7 +68,7 @@ export function UploadPage() {
     const chosenTitle = title || fallbackTitle;
     if (!title) setTitle(fallbackTitle);
     try {
-      const presign = await api.presign({ name: f.name, size: f.size, type: f.type }, wallet.address!);
+      const presign = await api.presign({ name: f.name, size: f.size, type: f.type }, wallet.address!, wallet.accountId);
       await putWithProgress(presign.uploadUrl, f, setProgress);
       const seconds = await readDuration(f).catch(() => 60);
       const created = await api.completeUpload({
@@ -84,6 +79,7 @@ export function UploadPage() {
         recipient: recipient || wallet.accountId!,
         durationSeconds: seconds,
         address: wallet.address!,
+        accountId: wallet.accountId,
       });
       setVideoId(created.id);
     } catch (e) {
@@ -95,7 +91,7 @@ export function UploadPage() {
     if (!videoId || !derived?.price || derived.tooLow) return;
     setBusy(true);
     try {
-      await api.publish({ videoId, totalPrice: derived.price.toString(), freePreviewChunks: freeChunks, address: wallet.address! });
+      await api.publish({ videoId, totalPrice: derived.price.toString(), freePreviewChunks: freeChunks, address: wallet.address!, accountId: wallet.accountId });
       navigate(`/watch/${videoId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -139,21 +135,21 @@ export function UploadPage() {
         {videoId ? <Badge tone={status === "ready" ? "settled" : "pending"}>{status === "ready" ? "Ready" : "Processing"}</Badge> : null}
       </div>
 
-      <label className="grid gap-1 text-[13px]">
+      <label className="grid gap-2 text-[13px] font-medium">
         Title
         <input value={title} onChange={e => setTitle(e.target.value)} className={field} />
       </label>
-      <label className="grid gap-1 text-[13px]">
+      <label className="grid gap-2 text-[13px] font-medium">
         Description
-        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full resize-y rounded-md border border-input bg-bg px-4 py-3 text-body outline-none focus:border-primary focus:ring-[3px] focus:ring-ring" />
+        <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4} className="w-full resize-y rounded-md border border-input bg-bg px-4 py-3 text-body font-normal leading-[1.5] outline-none focus:border-primary focus:ring-[3px] focus:ring-ring" />
       </label>
-      <label className={cn("grid gap-1 text-[13px]", recipientInvalid && "text-destructive")}>
+      <label className={cn("grid gap-2 text-[13px] font-medium", recipientInvalid && "text-destructive")}>
         Recipient account
         <input value={recipient} onChange={e => setRecipient(e.target.value)} className={cn(field, "font-mono", recipientInvalid && "border-destructive")} placeholder="0.0.48219" />
         {recipientInvalid ? <span className="text-[12px]">Not a valid Hedera account ID.</span> : null}
       </label>
 
-      <label className="grid gap-1 text-[13px]">
+      <label className="grid gap-2 text-[13px] font-medium">
         Total price for the full watch
         <span className="relative">
           <input
@@ -164,22 +160,31 @@ export function UploadPage() {
             className={cn(field, "pr-16 tabular focus:border-chain focus:ring-chain/25 disabled:text-muted-fg")}
             placeholder={status === "ready" ? "0.0720" : "Waiting for transcode…"}
           />
-          <span className="pointer-events-none absolute inset-y-0 right-5 grid place-items-center text-[13px] text-muted-fg">USDC</span>
+          <span className="pointer-events-none absolute inset-y-0 right-[18px] grid place-items-center"><UsdcMark size={16} /></span>
         </span>
         {derived ? (
-          <span className={cn("text-[12px] tabular", derived.tooLow ? "text-destructive" : "text-muted-fg")}>
-            {derived.tooLow
-              ? `Too low for this length. Minimum is ${formatUsdc(derived.min)} USDC.`
-              : derived.price !== undefined
-                ? `${formatUsdc(derived.price)} USDC · ${derived.priced} chunk · ${formatUsdc(derived.perMin ?? 0n)} USDC per minute${derived.perMin && derived.perMin > 10_000n ? " · unusually high" : ""}`
-                : `${derived.chunks} chunk · suggested ${formatUsdc(suggestedTotalPrice(duration!))} USDC`}
+          <span className={cn("flex flex-wrap items-center gap-1 text-[12px] tabular", derived.tooLow ? "text-destructive" : "text-muted-fg")}>
+            {derived.tooLow ? (
+              <>
+                Too low for this length. Minimum is {formatUsdc(derived.min)} <UsdcMark size={12} />.
+              </>
+            ) : derived.price !== undefined ? (
+              <>
+                {formatUsdc(derived.price)} <UsdcMark size={12} /> · {derived.priced} chunk · {formatUsdc(derived.perMin ?? 0n)} <UsdcMark size={12} /> per minute
+                {derived.perMin && derived.perMin > 10_000n ? " · unusually high" : ""}
+              </>
+            ) : (
+              <>
+                {derived.chunks} chunk · suggested {formatUsdc(suggestedTotalPrice(duration!))} <UsdcMark size={12} />
+              </>
+            )}
           </span>
         ) : (
           <span className="text-[12px] text-muted-fg">The chunk count is known once the transcode finishes.</span>
         )}
       </label>
 
-      <label className="grid gap-1 text-[13px]">
+      <label className="grid gap-2 text-[13px] font-medium">
         Free preview chunks (0–{MAX_FREE_PREVIEW_CHUNKS}, 5 s each)
         <input type="number" min={0} max={MAX_FREE_PREVIEW_CHUNKS} value={freeChunks} onChange={e => setFreeChunks(Math.max(0, Math.min(MAX_FREE_PREVIEW_CHUNKS, Number(e.target.value) || 0)))} className={cn(field, "tabular")} />
       </label>

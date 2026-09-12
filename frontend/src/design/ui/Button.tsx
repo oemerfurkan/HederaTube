@@ -13,7 +13,7 @@ const variants: Record<ButtonVariant, string> = {
   primary: "bg-primary text-primary-fg border-0 hover:brightness-[1.08] disabled:bg-secondary disabled:text-muted-fg",
   /** Money buttons are Chain, never Signal. */
   chain: "bg-chain text-chain-on border-0 hover:brightness-[1.08] focus-visible:ring-chain/40 disabled:bg-secondary disabled:text-muted-fg",
-  secondary: "bg-secondary text-secondary-fg border-0 hover:brightness-[0.96] disabled:text-muted-fg",
+  secondary: "bg-secondary text-secondary-fg border-0 hover:bg-surface-3 disabled:text-muted-fg",
   outline: "border border-border bg-transparent hover:border-primary hover:text-primary disabled:text-muted-fg",
   ghost: "bg-transparent text-muted-fg hover:bg-surface-2 hover:text-fg",
   destructive: "bg-destructive text-white border-0 hover:brightness-[1.08]",

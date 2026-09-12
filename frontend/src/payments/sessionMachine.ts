@@ -9,7 +9,7 @@ import { PaymentMutex } from "./paymentMutex";
 import { channelMeta } from "./channelStorage";
 import { receiptsStore } from "./receipts";
 import type { PaymentStatus, ViewingSession } from "./types";
-import { chunkOfSegment, cumulativeAmount, isPaidSegment } from "@/lib/price";
+import { SEGMENTS_PER_CHUNK, chunkOfSegment, cumulativeAmount } from "@/lib/price";
 import { api } from "@/api/client";
 import type { Video } from "@/api/types";
 
@@ -147,30 +147,41 @@ export class SessionEngine {
     }
   }
 
-  /** Whether a segment must go through the x402 fetch wrapper. */
+  /** Whether the chunk a segment belongs to still needs its voucher. */
   needsPayment(segmentIndex: number): boolean {
     const session = this.state.session;
     if (!session) return false;
-    if (!isPaidSegment(segmentIndex, session.freePreviewChunks)) return false;
-    return !this.state.paidChunks.includes(chunkOfSegment(segmentIndex));
+    const chunk = chunkOfSegment(segmentIndex);
+    if (chunk < session.freePreviewChunks) return false;
+    return !this.state.paidChunks.includes(chunk);
   }
 
-  /** Paid segment fetch: one cumulative voucher, serialised on the channel mutex. */
+  /**
+   * Segment fetch for an unpaid chunk, serialised on the channel mutex. The voucher always rides on
+   * the chunk's first segment (the server's paid route); when playback seeks onto the second
+   * segment first, the first is paid (and discarded) before the requested one is fetched plainly.
+   */
   fetchPaid(url: string, segmentIndex: number): Promise<Response> {
     return this.mutex.run(async () => {
       if (!this.payment) throw new PaymentError("no payment client");
       if (!this.needsPayment(segmentIndex)) return fetch(url);
-      const response = await this.payment.fetchWithPayment(url);
+      const chunk = chunkOfSegment(segmentIndex);
+      const firstIndex = chunk * SEGMENTS_PER_CHUNK;
+      const firstUrl = url.replace(/seg-\d+\.ts/, `seg-${String(firstIndex).padStart(4, "0")}.ts`);
+      const response = await this.payment.fetchWithPayment(firstUrl);
       const settle = this.readSettle(response);
       if (response.status === 402 || !response.ok) {
         throw new PaymentError(
-          settle?.errorMessage ?? `Payment for segment ${segmentIndex} failed (${response.status})`,
+          settle?.errorMessage ?? `Payment for chunk ${chunk} failed (${response.status})`,
           settle?.errorReason,
           response.status,
         );
       }
-      if (settle?.success) this.onChunkPaid(chunkOfSegment(segmentIndex), settle);
-      return response;
+      if (settle?.success) this.onChunkPaid(chunk, settle);
+      if (segmentIndex === firstIndex) return response;
+      // Drain the paid body so the connection is reusable, then fetch the segment that was asked for.
+      await response.arrayBuffer().catch(() => undefined);
+      return fetch(url);
     });
   }
 

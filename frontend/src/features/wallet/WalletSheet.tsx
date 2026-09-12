@@ -50,13 +50,7 @@ function Disconnected() {
           </button>
         ))}
       </div>
-      {wallet.mode === "local" ? (
-        <p className="text-[12px] text-muted-fg">
-          Privy is not configured (`VITE_PRIVY_APP_ID`). Any option creates a local dev key in this browser.
-        </p>
-      ) : (
-        <p className="text-[12px] text-muted-fg">The third option has no session signer; every video needs a manual lock signature.</p>
-      )}
+      <p className="text-[12px] text-muted-fg">The third option has no session signer; every video needs a manual lock signature.</p>
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={wallet.closeSheet}>
           Not now

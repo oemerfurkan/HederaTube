@@ -66,6 +66,8 @@ export const sessions = pgTable(
     last_activity_at: timestamp("last_activity_at", { withTimezone: true }).notNull().defaultNow(),
     chunks_served: integer("chunks_served").notNull().default(0),
     chunks_consumed: integer("chunks_consumed").notNull().default(0),
+    /** Chunk indices that carried a voucher; seeking pays only chunks actually watched. */
+    paid_chunks: jsonb("paid_chunks").$type<number[]>().notNull().default([]),
     consumed_amount: money("consumed_amount").notNull().default("0"),
     refunded_amount: money("refunded_amount").notNull().default("0"),
     refund_tx: text("refund_tx"),

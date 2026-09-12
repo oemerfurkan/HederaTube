@@ -8,7 +8,7 @@ export function BalancePill() {
     <button
       type="button"
       onClick={wallet.openSheet}
-      className="inline-flex h-9 items-center rounded-pill border border-chain/60 px-3.5 text-[13px] font-medium text-chain-fg transition-colors duration-[180ms] ease-ht hover:bg-chain-soft"
+      className="inline-flex h-10 items-center rounded-pill border border-chain/60 px-4 text-[14px] font-medium text-chain-fg transition-colors duration-[180ms] ease-ht hover:bg-chain-soft"
     >
       {wallet.balance !== undefined ? <Amount value={wallet.balance} /> : <span className="text-muted-fg">—</span>}
     </button>

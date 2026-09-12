@@ -1,3 +1,5 @@
+// World ID verification is parked for now. Kept for when it returns; re-enable in api/app.ts.
+/*
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
@@ -11,7 +13,7 @@ import { findAccount, mirror, USDC_TOKEN_ID } from "../../shared/hedera.js";
 export function verifyRouter(): Router {
   const router = Router();
 
-  /** RP context for an IDKit v4 request. Unsigned placeholder until a World RP key is configured. */
+  /** RP context for an IDKit v4 request. Unsigned placeholder until a World RP key is configured. * /
   router.post("/verify/world/request", (_req, res) => {
     const now = Math.floor(Date.now() / 1000);
     res.json({ rp_id: env.WORLD_APP_ID ? `rp_${env.WORLD_APP_ID}` : "rp_hederatube_dev", nonce: randomUUID().replace(/-/g, ""), created_at: now, expires_at: now + 300, signature: `0x${"00".repeat(64)}` });
@@ -60,3 +62,6 @@ export function verifyRouter(): Router {
 
   return router;
 }
+
+*/
+export {};

@@ -72,10 +72,12 @@ export const api = {
   me: (address: string) => request<Me>(`/api/me?address=${address}`),
   earnings: (address: string) => request<EarningsResponse>(`/api/me/earnings?address=${address}`),
   channel: (handle: string) => request<ChannelResponse>(`/api/channel/${handle}`),
+  likeState: (videoId: string, viewer: string) =>
+    request<{ likes: number; liked: boolean }>(`/api/video/${videoId}/like?viewer=${viewer}`),
   like: (videoId: string, viewer: string) =>
     request<{ likes: number; liked: boolean }>(`/api/video/${videoId}/like`, { method: "POST", json: { viewer } }),
-  presign: (file: { name: string; size: number; type: string }, address: string) =>
-    request<PresignResponse>("/api/upload/presign", { method: "POST", json: { ...file, address } }),
+  presign: (file: { name: string; size: number; type: string }, address: string, accountId?: string) =>
+    request<PresignResponse>("/api/upload/presign", { method: "POST", json: { ...file, address, accountId } }),
   completeUpload: (body: {
     videoId: string;
     key: string;
@@ -84,17 +86,18 @@ export const api = {
     recipient: string;
     durationSeconds: number;
     address: string;
+    accountId?: string;
   }) => request<Video>("/api/upload/complete", { method: "POST", json: body }),
-  publish: (body: { videoId: string; totalPrice: string; freePreviewChunks: number; address: string }) =>
+  publish: (body: { videoId: string; totalPrice: string; freePreviewChunks: number; address: string; accountId?: string }) =>
     request<Video>("/api/upload/publish", { method: "POST", json: body }),
-  /** RP context for an IDKit v4 request; the real backend signs it with its RP key. */
-  worldRequest: (address: string) =>
-    request<{ rp_id: string; nonce: string; created_at: number; expires_at: number; signature: string }>("/api/verify/world/request", {
-      method: "POST",
-      json: { address },
-    }),
-  verifyWorld: (body: { address: string; accountId?: string; proof: unknown; handle: string; displayName: string }) =>
-    request<Me>("/api/verify/world", { method: "POST", json: body }),
+  // World ID (parked): re-enable together with features/verify/VerifyPage.tsx and the backend verify router.
+  // worldRequest: (address: string) =>
+  //   request<{ rp_id: string; nonce: string; created_at: number; expires_at: number; signature: string }>("/api/verify/world/request", {
+  //     method: "POST",
+  //     json: { address },
+  //   }),
+  // verifyWorld: (body: { address: string; accountId?: string; proof: unknown; handle: string; displayName: string }) =>
+  //   request<Me>("/api/verify/world", { method: "POST", json: body }),
   runBatch: () => request<{ settled: number; txHash: string | null }>("/api/dev/run-batch", { method: "POST" }),
   resetMock: () => request<{ ok: true }>("/api/dev/reset", { method: "POST" }),
 };

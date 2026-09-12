@@ -65,7 +65,7 @@ export function ReceiptCard({ receipt }: { receipt: Receipt }) {
         <div className="mt-1 flex items-baseline justify-between border-t border-border pt-2.5">
           <dt className="text-small text-muted-fg">Refunded</dt>
           <dd>
-            <Amount value={receipt.refunded} className="text-[22px] font-bold tracking-[-0.02em] text-chain-fg" />
+            <Amount value={receipt.refunded} className="text-[32px] font-bold tracking-[-0.02em] text-chain-fg" />
           </dd>
         </div>
       </dl>

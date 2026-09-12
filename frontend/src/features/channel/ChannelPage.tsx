@@ -1,5 +1,5 @@
 import { useParams } from "react-router";
-import { AddressAvatar, Amount, Mono } from "@/design/ui";
+import { Amount, Avatar, Mono } from "@/design/ui";
 import { useChannel } from "@/api/hooks";
 import { VideoGrid } from "@/features/home/VideoGrid";
 
@@ -12,7 +12,7 @@ export function ChannelPage() {
   return (
     <div className="grid gap-8">
       <header className="flex flex-wrap items-center gap-5">
-        <AddressAvatar address={c.creator.hedera_account_id} size={72} />
+        <Avatar size={72} />
         <div className="grid gap-1">
           <h1 className="text-h1">{c.creator.display_name}</h1>
           <div className="flex flex-wrap items-center gap-3 text-small text-muted-fg">
@@ -37,7 +37,7 @@ export function ChannelPage() {
 
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-0.5 rounded-card bg-surface px-5 py-4 shadow-1">
+    <div className="grid gap-0.5 rounded-card border border-border bg-surface px-5 py-4">
       <span className="label-caps text-muted-fg">{label}</span>
       <span className="text-numeric">{children}</span>
     </div>

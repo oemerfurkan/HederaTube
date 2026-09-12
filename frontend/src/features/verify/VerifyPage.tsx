@@ -1,3 +1,6 @@
+// World ID verification is parked for now. The full implementation is kept below, commented out;
+// re-enable it together with the router entry, api.worldRequest/verifyWorld and the backend verify router.
+/*
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { IDKitRequestWidget, proofOfHuman, type IDKitResult, type RpContext } from "@worldcoin/idkit";
@@ -15,13 +18,13 @@ const WORLD_ACTION = (import.meta.env.VITE_WORLD_ACTION as string) || "hederatub
 const input =
   "h-11 rounded-pill border border-input bg-bg px-5 text-body outline-none transition-all duration-[180ms] ease-ht focus:border-primary focus:ring-[3px] focus:ring-ring";
 
-/** Best-effort nullifier extraction across IDKit result versions; the backend is the authority. */
+/** Best-effort nullifier extraction across IDKit result versions; the backend is the authority. * /
 function nullifierOf(result: unknown): string {
   const r = result as { nullifier_hash?: string; nullifier?: string; responses?: { nullifier?: string; nullifier_hash?: string }[] };
   return r.nullifier_hash ?? r.nullifier ?? r.responses?.[0]?.nullifier ?? r.responses?.[0]?.nullifier_hash ?? keccak256(toBytes(JSON.stringify(result)));
 }
 
-/** Guide §6.6: one dialog, three steps. Already verified → no dialog, straight to upload. */
+/** Guide §6.6: one dialog, three steps. Already verified → no dialog, straight to upload. * /
 export function VerifyPage() {
   const wallet = useWallet();
   const navigate = useNavigate();
@@ -175,3 +178,6 @@ export function VerifyPage() {
     </Dialog>
   );
 }
+
+*/
+export {};

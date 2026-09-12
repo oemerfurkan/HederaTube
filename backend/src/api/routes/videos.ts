@@ -39,6 +39,16 @@ export function videosRouter(): Router {
     res.json(await sessionList(video, tab));
   });
 
+  /** Read side of the like: the card has to come back red for a viewer who already liked it. */
+  router.get("/video/:id/like", async (req, res) => {
+    const viewer = typeof req.query.viewer === "string" ? normalizeAddress(req.query.viewer) : "";
+    const video = await db.query.videos.findFirst({ where: eq(videos.id, req.params.id) });
+    if (!video) return res.status(404).json({ error: "video not found" });
+    const existing = viewer ? await db.query.likes.findFirst({ where: and(eq(likes.video_id, video.id), eq(likes.viewer_address, viewer)) }) : undefined;
+    const out = await toVideo(video);
+    res.json({ likes: out.likes, liked: !!existing });
+  });
+
   router.post("/video/:id/like", async (req, res) => {
     const viewer = typeof req.body?.viewer === "string" ? normalizeAddress(req.body.viewer) : "";
     if (!viewer) return res.status(400).json({ error: "viewer required" });

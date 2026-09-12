@@ -2,5 +2,5 @@ import type { HTMLAttributes } from "react";
 import { cn } from "./cn";
 
 export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("rounded-card bg-surface p-6 shadow-1", className)} {...rest} />;
+  return <div className={cn("rounded-card border border-border bg-surface p-6", className)} {...rest} />;
 }

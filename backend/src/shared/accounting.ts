@@ -7,11 +7,14 @@ export type SessionAccounting = {
   free_preview_chunks: number;
   chunks_consumed: number;
   chunks_served: number;
+  /** Chunk indices already paid (set-based: seeking charges only what is watched). */
+  paid_chunks: number[];
   status: string;
 };
 
 export type SegmentClass =
   | { kind: "preview"; chunk: number }
+  /** `k` = ordinal of this chunk among paid chunks (1-based): the k-th chunk watched. */
   | { kind: "paid"; chunk: number; pricedIndex: number; k: number }
   | { kind: "already-paid"; chunk: number }
   | { kind: "second-unpaid"; chunk: number }
@@ -23,24 +26,18 @@ export function classifySegment(session: SessionAccounting, segmentIndex: number
   const free = session.free_preview_chunks;
   if (chunk < free) return { kind: "preview", chunk };
   const pricedIndex = chunk - free;
-  const paidAlready = pricedIndex < session.chunks_consumed;
+  const paidAlready = session.paid_chunks.includes(chunk);
   if (isPaidSegment(segmentIndex, free)) {
     if (paidAlready) return { kind: "already-paid", chunk };
-    const k = Math.max(1, Math.min(session.priced_chunk_count, pricedIndex + 1));
+    const k = Math.max(1, Math.min(session.priced_chunk_count, session.paid_chunks.length + 1));
     return { kind: "paid", chunk, pricedIndex, k };
   }
   return paidAlready ? { kind: "second-paid", chunk } : { kind: "second-unpaid", chunk };
 }
 
-/** Amount to charge for priced chunk `k` (1-based) given the channel's current cumulative charge. */
+/** Amount to charge for the k-th paid chunk (1-based) given the channel's current cumulative charge. */
 export function chunkCharge(session: SessionAccounting, k: number, chargedCumulative: bigint): bigint {
-  const alreadyPaid = session.chunks_consumed >= k;
-  if (alreadyPaid) return 0n;
-  const target = cumulativeAmount(
-    BigInt(session.locked_amount),
-    Math.max(k, session.chunks_consumed),
-    session.priced_chunk_count,
-  );
+  const target = cumulativeAmount(BigInt(session.locked_amount), Math.max(k, session.paid_chunks.length), session.priced_chunk_count);
   const delta = target - chargedCumulative;
   return delta < 0n ? 0n : delta;
 }

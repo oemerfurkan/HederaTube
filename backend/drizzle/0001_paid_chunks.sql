@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "paid_chunks" jsonb DEFAULT '[]'::jsonb NOT NULL;

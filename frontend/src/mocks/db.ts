@@ -42,6 +42,8 @@ export type SessionRow = {
   ended_at: string | null;
   chunks_served: number;
   chunks_consumed: number;
+  /** Chunk indices that carried a voucher (seeking pays only the chunks actually watched). */
+  paid_chunks: number[];
   consumed_amount: string;
   refunded_amount: string;
   refund_tx: string | null;
@@ -177,6 +179,7 @@ function seedSessions(videos: VideoRow[]): SessionRow[] {
         ended_at: new Date(started.getTime() + consumed * 5000).toISOString(),
         chunks_served: consumed + video.free_preview_chunks,
         chunks_consumed: consumed,
+        paid_chunks: Array.from({ length: consumed }, (_, k) => video.free_preview_chunks + k),
         consumed_amount: consumedAmount.toString(),
         refunded_amount: (BigInt(video.total_price) - consumedAmount).toString(),
         refund_tx: `0.0.10463136@${Math.floor(started.getTime() / 1000) + 400}.${200 + n}`,

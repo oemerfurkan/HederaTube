@@ -1,57 +1,64 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Heart, ShareNetwork } from "@phosphor-icons/react";
-import { AddressAvatar, Amount, Button, cn } from "@/design/ui";
+import { Amount, Avatar, RollingNumber, cn, toast } from "@/design/ui";
 import type { Video } from "@/api/types";
-import { perMinute } from "@/lib/price";
 import { api } from "@/api/client";
+import { useLikeState } from "@/api/hooks";
 import { useWallet } from "@/features/wallet/WalletProvider";
 
-/** H1 title; channel row with outline Subscribe (play owns the red); like/share pills; per-minute badge. */
+/** H1 title, the channel it belongs to, like and share, and what the whole video costs to watch. */
 export function TitleBlock({ video }: { video: Video }) {
   const wallet = useWallet();
-  const [likes, setLikes] = useState<{ count: number; liked: boolean }>({ count: video.likes, liked: false });
-  const [subscribed, setSubscribed] = useState(false);
-  const [copied, setCopied] = useState(false);
+  // the server owns the truth; local state only covers the moment between the click and the reply
+  const known = useLikeState(video.id, wallet.address);
+  const [pending, setPending] = useState<{ count: number; liked: boolean } | null>(null);
+  useEffect(() => setPending(null), [wallet.address, video.id]);
+  const likes = pending ?? { count: known.data?.likes ?? video.likes, liked: known.data?.liked ?? false };
+
   const like = async () => {
     if (!wallet.address) return wallet.openSheet();
+    setPending({ count: likes.count + (likes.liked ? -1 : 1), liked: !likes.liked });
     const res = await api.like(video.id, wallet.address);
-    setLikes({ count: res.likes, liked: res.liked });
+    setPending({ count: res.likes, liked: res.liked });
   };
+
   const share = async () => {
     await navigator.clipboard.writeText(window.location.href).catch(() => undefined);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+    toast("Link copied");
   };
+
   return (
-    <div className="grid gap-3">
-      <h1 className="text-h1">{video.title}</h1>
+    <div className="grid gap-3 pt-1">
+      <h1 className="text-[20px] font-bold leading-7">{video.title}</h1>
       <div className="flex flex-wrap items-center gap-3">
-        <Link to={`/channel/${video.creator.handle}`} className="flex items-center gap-3" data-flip-id={`avatar-${video.id}`}>
-          <AddressAvatar address={video.creator.hedera_account_id} size={40} />
-          <span>
-            <span className="block text-[15px] font-medium">{video.creator.display_name}</span>
-            <span className="block text-small tabular text-muted-fg">{video.creator.subscribers.toLocaleString()} subscribers</span>
-          </span>
+        <Link to={`/channel/${video.creator.handle}`} className="flex items-center gap-3">
+          <Avatar size={40} />
+          <span className="text-[16px] font-medium leading-[22px]">{video.creator.display_name}</span>
         </Link>
-        <Button variant="outline" size="sm" onClick={() => setSubscribed(v => !v)}>
-          {subscribed ? "Subscribed" : "Subscribe"}
-        </Button>
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
             onClick={like}
-            className={cn("inline-flex h-8 items-center gap-1.5 rounded-pill bg-surface-2 px-3.5 text-[13px] tabular", likes.liked && "text-primary")}
+            className={cn(
+              "inline-flex h-9 items-center gap-1.5 rounded-pill bg-surface-2 px-4 text-[14px] font-medium transition-colors duration-[180ms] ease-ht hover:bg-surface-3",
+              likes.liked && "text-primary",
+            )}
           >
-            <Heart size={16} weight={likes.liked ? "fill" : "regular"} />
-            {likes.count.toLocaleString()}
+            {/* the glyph fills with a pop; the number rolls in the direction it moved */}
+            <Heart key={String(likes.liked)} size={16} weight={likes.liked ? "fill" : "regular"} className={cn(likes.liked && "animate-like-pop")} />
+            <RollingNumber value={likes.count} />
           </button>
-          <button type="button" onClick={share} className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-surface-2 px-3.5 text-[13px]">
+          <button
+            type="button"
+            onClick={share}
+            className="inline-flex h-9 items-center gap-1.5 rounded-pill bg-surface-2 px-4 text-[14px] font-medium transition-colors duration-[180ms] ease-ht hover:bg-surface-3"
+          >
             <ShareNetwork size={16} />
-            {copied ? "Copied" : "Share"}
+            Share
           </button>
-          <span className="inline-flex h-8 items-center rounded-pill bg-chain-soft px-3.5 text-[13px] font-medium text-chain-fg">
-            <Amount value={perMinute(BigInt(video.total_price), video.duration_seconds)} /> / min
+          <span className="inline-flex h-9 items-center rounded-pill bg-chain-soft px-4 text-[14px] font-medium text-chain-fg">
+            <Amount value={BigInt(video.total_price)} />
           </span>
         </div>
       </div>

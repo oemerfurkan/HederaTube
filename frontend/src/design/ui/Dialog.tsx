@@ -28,7 +28,7 @@ export function Dialog({
       <div
         role="dialog"
         aria-modal
-        className={cn("grid w-full max-w-[420px] gap-4 rounded-card bg-surface p-7 shadow-2", className)}
+        className={cn("grid w-full max-w-[420px] gap-5 rounded-card bg-surface p-7 shadow-2", className)}
         onMouseDown={e => e.stopPropagation()}
       >
         {title ? <h2 className="text-[20px] font-bold tracking-[-0.01em]">{title}</h2> : null}

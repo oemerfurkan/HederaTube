@@ -27,7 +27,7 @@ export function Sheet({ open, onClose, children }: { open: boolean; onClose: () 
         ref={panel}
         role="dialog"
         aria-modal
-        className="absolute inset-y-0 right-0 w-full max-w-[400px] overflow-y-auto rounded-l-card bg-surface p-6 shadow-2"
+        className="absolute inset-y-0 right-0 w-full max-w-[400px] overflow-y-auto rounded-l-card bg-surface p-7 shadow-2"
         onMouseDown={e => e.stopPropagation()}
       >
         {children}

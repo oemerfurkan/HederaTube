@@ -15,7 +15,10 @@ export function VideoGrid({ videos, flipKey }: { videos: Video[]; flipKey: strin
     lastState.current = Flip.getState(ref.current.querySelectorAll("[data-card]"));
   }, [flipKey, videos]);
   return (
-    <div ref={ref} className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))" }}>
+    <div
+      ref={ref}
+      className="grid grid-cols-1 gap-x-4 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 [@media(min-width:2100px)]:grid-cols-4"
+    >
       {videos.map(video => (
         <div key={video.id} data-card data-flip-id={`card-${video.id}`}>
           <VideoCard video={video} />

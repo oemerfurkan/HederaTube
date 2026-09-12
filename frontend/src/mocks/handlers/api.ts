@@ -66,6 +66,26 @@ function creatorForAddress(db: MockDb, address: string): CreatorRow | undefined 
   return db.creators.find(c => c.wallet_address.toLowerCase() === address.toLowerCase());
 }
 
+/** Without World ID a connected wallet is a creator: the row is opened on first upload. */
+function ensureCreator(db: MockDb, address: string, accountId?: string): CreatorRow {
+  const existing = creatorForAddress(db, address);
+  if (existing) return existing;
+  const handle = address.slice(2, 10).toLowerCase();
+  const creator: CreatorRow = {
+    id: `creator-${db.creators.length + 1}`,
+    wallet_address: address.toLowerCase(),
+    hedera_account_id: accountId ?? "0.0.0",
+    handle,
+    display_name: handle,
+    world_nullifier_hash: null,
+    verified_at: new Date().toISOString(),
+    subscribers: 0,
+  };
+  db.creators.push(creator);
+  persist();
+  return creator;
+}
+
 function meOf(db: MockDb, address: string): Me {
   const creator = creatorForAddress(db, address);
   const today = new Date().toISOString().slice(0, 10);
@@ -122,6 +142,7 @@ export const apiHandlers = [
       ended_at: null,
       chunks_served: 0,
       chunks_consumed: 0,
+      paid_chunks: [],
       consumed_amount: "0",
       refunded_amount: "0",
       refund_tx: null,
@@ -198,6 +219,16 @@ export const apiHandlers = [
       live_count: live.length,
       rows: [...live, ...rest].slice(0, 50),
     });
+  }),
+
+  http.get("/api/video/:id/like", ({ params, request }) => {
+    const db = loadDb();
+    const videoId = String(params.id);
+    const video = db.videos.find(v => v.id === videoId);
+    if (!video) return HttpResponse.json({ error: "video not found" }, { status: 404 });
+    const viewer = (new URL(request.url).searchParams.get("viewer") ?? "").toLowerCase();
+    const liked = !!viewer && db.likes.some(l => l.video_id === videoId && l.viewer_address === viewer);
+    return HttpResponse.json({ likes: toVideo(db, video).likes, liked });
   }),
 
   http.post("/api/video/:id/like", async ({ params, request }) => {
@@ -283,8 +314,8 @@ export const apiHandlers = [
 
   http.post("/api/upload/presign", async ({ request }) => {
     const db = loadDb();
-    const body = (await request.json()) as { name: string; size: number; type: string; address: string };
-    if (!creatorForAddress(db, body.address)) return HttpResponse.json({ error: "creator not verified" }, { status: 403 });
+    const body = (await request.json()) as { name: string; size: number; type: string; address: string; accountId?: string };
+    ensureCreator(db, body.address, body.accountId);
     const videoId = `v-${Date.now().toString(36)}`;
     const key = `uploads/${videoId}/${encodeURIComponent(body.name)}`;
     return HttpResponse.json({ uploadUrl: `/mock-storage/${key}`, key, videoId });
@@ -310,9 +341,9 @@ export const apiHandlers = [
       recipient: string;
       durationSeconds: number;
       address: string;
+      accountId?: string;
     };
-    const creator = creatorForAddress(db, body.address);
-    if (!creator) return HttpResponse.json({ error: "creator not verified" }, { status: 403 });
+    const creator = ensureCreator(db, body.address, body.accountId);
     const duration = Math.max(5, Math.round(body.durationSeconds || 60));
     const segments = segmentCount(duration);
     const asset = duration <= 30 ? "d30" : duration <= 60 ? "d60" : duration <= 120 ? "d120" : "d300";
@@ -358,50 +389,52 @@ export const apiHandlers = [
     return HttpResponse.json(toVideo(db, video));
   }),
 
-  /** Unsigned placeholder RP context. The real server signs nonce+created_at with the RP key. */
-  http.post("/api/verify/world/request", () => {
-    const now = Math.floor(Date.now() / 1000);
-    return HttpResponse.json({
-      rp_id: "rp_mock_hederatube",
-      nonce: crypto.randomUUID().replace(/-/g, ""),
-      created_at: now,
-      expires_at: now + 300,
-      signature: "0x" + "00".repeat(64),
-    });
-  }),
+  // World ID handlers (parked):
+  //   /** Unsigned placeholder RP context. The real server signs nonce+created_at with the RP key. */
+  //   http.post("/api/verify/world/request", () => {
+  //     const now = Math.floor(Date.now() / 1000);
+  //     return HttpResponse.json({
+  //       rp_id: "rp_mock_hederatube",
+  //       nonce: crypto.randomUUID().replace(/-/g, ""),
+  //       created_at: now,
+  //       expires_at: now + 300,
+  //       signature: "0x" + "00".repeat(64),
+  //     });
+  //   }),
+  // 
+  //   http.post("/api/verify/world", async ({ request }) => {
+  //     const db = loadDb();
+  //     const body = (await request.json()) as {
+  //       address: string;
+  //       accountId?: string;
+  //       proof: { nullifier_hash?: string };
+  //       handle: string;
+  //       displayName: string;
+  //     };
+  //     const nullifier = body.proof?.nullifier_hash;
+  //     if (!nullifier) return HttpResponse.json({ error: "proof missing nullifier_hash" }, { status: 400 });
+  //     const clash = db.creators.find(c => c.world_nullifier_hash === nullifier && c.wallet_address.toLowerCase() !== body.address.toLowerCase());
+  //     if (clash) return HttpResponse.json({ error: "This World ID already backs another creator account." }, { status: 409 });
+  //     const handle = (body.handle || body.address.slice(2, 10)).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  //     if (db.creators.some(c => c.handle === handle && c.wallet_address.toLowerCase() !== body.address.toLowerCase())) {
+  //       return HttpResponse.json({ error: "Handle is taken." }, { status: 409 });
+  //     }
+  //     let creator = creatorForAddress(db, body.address);
+  //     if (!creator) {
+  //       creator = {
+  //         id: `creator-${db.creators.length + 1}`,
+  //         wallet_address: body.address.toLowerCase(),
+  //         hedera_account_id: body.accountId ?? "0.0.0",
+  //         handle,
+  //         display_name: body.displayName || handle,
+  //         world_nullifier_hash: nullifier,
+  //         verified_at: new Date().toISOString(),
+  //         subscribers: 0,
+  //       };
+  //       db.creators.push(creator);
+  //     }
+  //     persist();
+  //     return HttpResponse.json(meOf(db, body.address));
+  //   }),
 
-  http.post("/api/verify/world", async ({ request }) => {
-    const db = loadDb();
-    const body = (await request.json()) as {
-      address: string;
-      accountId?: string;
-      proof: { nullifier_hash?: string };
-      handle: string;
-      displayName: string;
-    };
-    const nullifier = body.proof?.nullifier_hash;
-    if (!nullifier) return HttpResponse.json({ error: "proof missing nullifier_hash" }, { status: 400 });
-    const clash = db.creators.find(c => c.world_nullifier_hash === nullifier && c.wallet_address.toLowerCase() !== body.address.toLowerCase());
-    if (clash) return HttpResponse.json({ error: "This World ID already backs another creator account." }, { status: 409 });
-    const handle = (body.handle || body.address.slice(2, 10)).toLowerCase().replace(/[^a-z0-9_-]/g, "");
-    if (db.creators.some(c => c.handle === handle && c.wallet_address.toLowerCase() !== body.address.toLowerCase())) {
-      return HttpResponse.json({ error: "Handle is taken." }, { status: 409 });
-    }
-    let creator = creatorForAddress(db, body.address);
-    if (!creator) {
-      creator = {
-        id: `creator-${db.creators.length + 1}`,
-        wallet_address: body.address.toLowerCase(),
-        hedera_account_id: body.accountId ?? "0.0.0",
-        handle,
-        display_name: body.displayName || handle,
-        world_nullifier_hash: nullifier,
-        verified_at: new Date().toISOString(),
-        subscribers: 0,
-      };
-      db.creators.push(creator);
-    }
-    persist();
-    return HttpResponse.json(meOf(db, body.address));
-  }),
 ];

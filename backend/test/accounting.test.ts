@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { badgeOf, buildPlaylist, chunkCharge, classifySegment, earningsStatus, parseExtinf, receiptRefunded } from "../src/shared/accounting.js";
 
-const session = { locked_amount: "1000", priced_chunk_count: 4, free_preview_chunks: 2, chunks_consumed: 0, chunks_served: 0, status: "locked" };
+const session = { locked_amount: "1000", priced_chunk_count: 4, free_preview_chunks: 2, chunks_consumed: 0, chunks_served: 0, paid_chunks: [] as number[], status: "locked" };
 
 describe("segment classification and charging", () => {
   it("classifies preview, paid, second and already-paid segments", () => {
@@ -9,10 +9,12 @@ describe("segment classification and charging", () => {
     expect(classifySegment(session, 3).kind).toBe("preview");
     expect(classifySegment(session, 4)).toEqual({ kind: "paid", chunk: 2, pricedIndex: 0, k: 1 });
     expect(classifySegment(session, 5).kind).toBe("second-unpaid");
-    const after = { ...session, chunks_consumed: 1 };
+    const after = { ...session, chunks_consumed: 1, paid_chunks: [2] };
     expect(classifySegment(after, 4).kind).toBe("already-paid");
     expect(classifySegment(after, 5).kind).toBe("second-paid");
     expect(classifySegment(after, 6)).toEqual({ kind: "paid", chunk: 3, pricedIndex: 1, k: 2 });
+    // Seeking ahead: chunk 5 becomes the 2nd paid chunk, not the 4th.
+    expect(classifySegment(after, 10)).toEqual({ kind: "paid", chunk: 5, pricedIndex: 3, k: 2 });
   });
   it("charges the floor delta per chunk and nothing for repeats; the last chunk lands on the price", () => {
     let charged = 0n;
@@ -20,7 +22,7 @@ describe("segment classification and charging", () => {
     for (let k = 1; k <= 4; k += 1) {
       const d = chunkCharge(s, k, charged);
       charged += d;
-      s = { ...s, chunks_consumed: k };
+      s = { ...s, chunks_consumed: k, paid_chunks: [...s.paid_chunks, k + 1] };
     }
     expect(charged).toBe(1000n);
     expect(chunkCharge(s, 2, charged)).toBe(0n);

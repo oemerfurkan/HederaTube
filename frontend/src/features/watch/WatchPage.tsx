@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect } from "react";
 import { useParams } from "react-router";
 import { useVideo } from "@/api/hooks";
 import { engine, useEngine } from "@/payments/sessionMachine";
@@ -8,9 +8,11 @@ import { TitleBlock } from "./TitleBlock";
 import { DescriptionCard } from "./DescriptionCard";
 import { SessionList } from "./SessionList";
 import { MoreVideosRail } from "./MoreVideosRail";
-import { playFlipInto } from "@/features/motion/flip";
 
-/** The demo itself (guide §6.4). Two columns: 1fr and a fixed 380 px rail; single column under 1200 px. */
+/**
+ * The demo itself (guide §6.4), laid out like YouTube's watch flexy: a fluid primary column and a
+ * secondary one that keeps YouTube's 28.5 % share, 12 px above them, and one 16 px gutter left, between and right.
+ */
 export function WatchPage() {
   const { videoId = "" } = useParams();
   const video = useVideo(videoId);
@@ -34,22 +36,20 @@ export function WatchPage() {
     };
   }, [videoId]);
 
-  useLayoutEffect(() => {
-    if (video.data) playFlipInto(video.data.id);
-  }, [video.data]);
-
-  if (video.isLoading) return <div className="text-small text-muted-fg">Loading…</div>;
-  if (!video.data) return <div className="text-small text-destructive">Video not found.</div>;
+  if (video.isLoading) return <div className="text-[14px] leading-5 text-muted-fg">Loading…</div>;
+  if (!video.data) return <div className="text-[14px] leading-5 text-destructive">Video not found.</div>;
   const v = video.data;
   return (
-    <div className="grid gap-8 xl:grid-cols-[1fr_380px]">
-      <div className="grid content-start gap-6">
+    <div className="flex flex-col pt-3 lg:flex-row">
+      <div className="grid min-w-0 flex-1 content-start gap-3 px-4 lg:pr-4">
         <Player video={v} />
         <TitleBlock video={v} />
         <DescriptionCard video={v} />
         <SessionList video={v} />
       </div>
-      <MoreVideosRail currentId={v.id} />
+      <div className="mt-6 px-4 lg:mt-0 lg:w-[28.5%] lg:min-w-[424px] lg:max-w-[560px] lg:shrink-0 lg:pl-0 lg:pr-4">
+        <MoreVideosRail currentId={v.id} />
+      </div>
     </div>
   );
 }

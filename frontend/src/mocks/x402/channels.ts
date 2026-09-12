@@ -146,10 +146,11 @@ export async function processVoucher(
   channel.pendingRequest = true;
   channel.lastRequestTimestamp = Date.now();
   try {
-    const pricedIndex = chunkIndex - session.free_preview_chunks; // 0-based priced chunk
-    const k = Math.max(1, Math.min(session.priced_chunk_count, pricedIndex + 1));
-    const alreadyPaid = session.chunks_consumed >= k;
-    const target = cumulativeAmount(BigInt(session.locked_amount), Math.max(k, session.chunks_consumed), session.priced_chunk_count);
+    const paid = session.paid_chunks ?? [];
+    const alreadyPaid = paid.includes(chunkIndex);
+    // Only chunks actually watched are charged: the k-th paid chunk, whatever its position.
+    const k = Math.min(session.priced_chunk_count, paid.length + 1);
+    const target = cumulativeAmount(BigInt(session.locked_amount), k, session.priced_chunk_count);
     const delta = alreadyPaid ? 0n : target - charged;
     if (charged + delta > BigInt(channel.balance)) {
       return { ok: false, reason: Errors.ErrCumulativeExceedsBalance, message: "Charge exceeds locked balance" };
@@ -158,7 +159,8 @@ export async function processVoucher(
     channel.signedMaxClaimable = parsed.payload.voucher.maxClaimableAmount;
     channel.signature = parsed.payload.voucher.signature;
     if (!alreadyPaid) {
-      session.chunks_consumed = k;
+      session.paid_chunks = [...paid, chunkIndex].sort((a, b) => a - b);
+      session.chunks_consumed = session.paid_chunks.length;
       session.consumed_amount = channel.chargedCumulativeAmount;
     }
     session.chunks_served = Math.max(session.chunks_served, chunkIndex + 1);

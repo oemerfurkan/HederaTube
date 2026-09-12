@@ -11,9 +11,9 @@ export function SessionList({ video }: { video: Video }) {
   const sessions = useVideoSessions(video.id, tab);
   const data = sessions.data;
   return (
-    <section className="grid gap-4">
+    <section className="grid gap-4 pt-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-h2">
+        <h2 className="text-[16px] font-medium leading-[22px]">
           <span className="tabular">{(data?.total_sessions ?? 0).toLocaleString()}</span> sessions ·{" "}
           <Amount value={data?.total_earned ?? 0n} className="text-chain-fg" /> earned
         </h2>
@@ -31,7 +31,7 @@ export function SessionList({ video }: { video: Video }) {
         </div>
       </div>
       {data && data.rows.length === 0 ? (
-        <p className="text-small text-muted-fg">No one has paid to watch this yet. Be the first.</p>
+        <p className="text-[14px] leading-5 text-muted-fg">No one has paid to watch this yet. Be the first.</p>
       ) : (
         <ul className="grid gap-1">
           {data?.rows.map(row => <SessionRow key={row.id} row={row} video={video} />)}
@@ -45,21 +45,26 @@ function SessionRow({ row, video }: { row: SessionListRow; video: Video }) {
   const tone = row.badge === "settled" ? "settled" : row.badge === "streaming" ? "streaming" : row.badge === "free" ? "free" : "pending";
   const label = row.badge === "settled" ? "Settled" : row.badge === "streaming" ? "Streaming" : row.badge === "free" ? "Free preview" : "Settling";
   return (
-    <li className="flex flex-wrap items-center gap-3 rounded-md px-2 py-2.5 hover:bg-surface-2">
+    <li className="flex flex-wrap items-center gap-3 py-2.5">
       <AddressAvatar address={row.viewer_address} size={32} />
       <Mono className="w-[110px] text-fg">{shortAddress(row.viewer_address, 6, 4)}</Mono>
-      <Amount value={row.paid_amount} className="w-[120px] font-medium text-chain-fg" />
-      <span className="text-small tabular text-muted-fg">
+      <Amount value={row.paid_amount} className="w-[120px] text-[14px] font-medium text-chain-fg" />
+      <span className="text-[12px] leading-[18px] tabular text-muted-fg">
         {formatClock(row.watched_seconds)} · {row.watched_percent}% of {formatClock(video.duration_seconds)}
       </span>
-      <span className="text-small tabular text-muted-fg">{new Date(row.started_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+      <span className="text-[12px] leading-[18px] tabular text-muted-fg">{new Date(row.started_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
       <span className="ml-auto flex items-center gap-2">
         <Badge tone={tone}>{label}</Badge>
         {row.tx ? (
-          <a href={hashscanTxUrl(row.tx)} target="_blank" rel="noreferrer" className="hidden lg:block">
-            <Mono block className="max-w-[180px] py-1.5 hover:text-fg">
-              {row.tx}
-            </Mono>
+          /* the settlement transaction is the receipt; the hash itself is noise in a list */
+          <a
+            href={hashscanTxUrl(row.tx)}
+            target="_blank"
+            rel="noreferrer"
+            title="Open this settlement on HashScan"
+            className="hidden h-[26px] cursor-pointer items-center rounded-pill bg-surface-2 px-3 text-[12px] font-medium text-muted-fg transition-colors duration-[180ms] ease-ht hover:bg-surface-3 hover:text-fg lg:inline-flex"
+          >
+            Receipt
           </a>
         ) : null}
       </span>

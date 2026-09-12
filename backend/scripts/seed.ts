@@ -115,6 +115,7 @@ async function main() {
           last_activity_at: started,
           chunks_served: consumed + video.free_preview_chunks,
           chunks_consumed: consumed,
+          paid_chunks: Array.from({ length: consumed }, (_, k) => video.free_preview_chunks + k),
           consumed_amount: amount.toString(),
           refunded_amount: (BigInt(video.total_price) - amount).toString(),
           refund_tx: `0.0.10463136@${Math.floor(started.getTime() / 1000) + 400}.${200 + n}`,

@@ -120,10 +120,9 @@ export const streamHandlers = [
     if (!session.lock_tx) return HttpResponse.text("lock first", { status: 402 });
 
     const chunk = chunkOfSegment(segmentIndex);
-    const pricedIndex = chunk - session.free_preview_chunks;
-    const paidAlready = pricedIndex < session.chunks_consumed;
+    const paidAlready = (session.paid_chunks ?? []).includes(chunk);
     const needsPayment = isPaidSegment(segmentIndex, session.free_preview_chunks) && !paidAlready;
-    const secondOfPaidChunk = !isPaidSegment(segmentIndex, session.free_preview_chunks) && pricedIndex >= 0 && !paidAlready;
+    const secondOfPaidChunk = !isPaidSegment(segmentIndex, session.free_preview_chunks) && chunk >= session.free_preview_chunks && !paidAlready;
     if (secondOfPaidChunk) {
       return HttpResponse.text("chunk not paid", { status: 402, headers: { "cache-control": "no-store" } });
     }

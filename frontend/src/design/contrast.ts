@@ -10,7 +10,7 @@ function luminance(hex: string): number {
 }
 
 /** Sets `--chain-on` so text on the Chain color always meets 4.5:1 (design rule: money buttons are Chain). */
-export function applyChainContrast(chainHex = "#8259EF"): void {
+export function applyChainContrast(chainHex = "#00807B"): void {
   const L = luminance(chainHex);
   const onWhite = 1.05 / (L + 0.05);
   document.documentElement.style.setProperty("--chain", chainHex);

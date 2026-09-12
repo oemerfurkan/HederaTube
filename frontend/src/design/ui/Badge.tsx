@@ -8,7 +8,7 @@ const tones: Record<BadgeTone, string> = {
   streaming: "bg-chain-soft text-chain-fg",
   free: "bg-surface-2 text-muted-fg",
   live: "bg-primary text-white",
-  pending: "bg-pending/15 text-pending",
+  pending: "bg-chain-soft text-chain-fg",
   neutral: "border border-border text-fg",
   destructive: "bg-destructive/12 text-destructive",
 };

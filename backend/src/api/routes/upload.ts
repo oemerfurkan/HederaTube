@@ -3,7 +3,9 @@ import { eq } from "drizzle-orm";
 import { db } from "../../shared/db/client.js";
 import { videos } from "../../shared/db/schema.js";
 import { creatorByAddress, toVideo } from "../../shared/db/queries.js";
-import { newVideoId, normalizeAddress } from "../../shared/ids.js";
+import { HEDERA_ENTITY_ID_REGEX, newCreatorId, newVideoId, normalizeAddress } from "../../shared/ids.js";
+import { creators } from "../../shared/db/schema.js";
+import { findAccount } from "../../shared/hedera.js";
 import { objectKeys, storage } from "../../shared/storage.js";
 import { env } from "../../shared/env.js";
 import { getTranscodeQueue } from "../../shared/queues.js";
@@ -12,9 +14,32 @@ import { mirror, USDC_TOKEN_ID } from "../../shared/hedera.js";
 
 const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
 
+/**
+ * Without World ID (parked) every connected wallet is a creator: the row is opened on first
+ * upload. The Hedera account id comes from the client or the Mirror Node (needed for payouts).
+ */
 async function requireCreator(req: Request) {
   const address = typeof req.body?.address === "string" ? normalizeAddress(req.body.address) : "";
-  return address ? creatorByAddress(address) : undefined;
+  if (!address) return undefined;
+  const existing = await creatorByAddress(address);
+  if (existing) return existing;
+  const bodyAccount = typeof req.body?.accountId === "string" && HEDERA_ENTITY_ID_REGEX.test(req.body.accountId) ? req.body.accountId : undefined;
+  const accountId = bodyAccount ?? (await findAccount(address).catch(() => undefined))?.account;
+  if (!accountId) return undefined;
+  const base = address.slice(2, 10);
+  let handle = base;
+  for (let i = 0; i < 5; i += 1) {
+    const [inserted] = await db
+      .insert(creators)
+      .values({ id: newCreatorId(), wallet_address: address, hedera_account_id: accountId, handle, display_name: base, verified_at: new Date() })
+      .onConflictDoNothing()
+      .returning();
+    if (inserted) return inserted;
+    const again = await creatorByAddress(address);
+    if (again) return again;
+    handle = `${base}-${i + 2}`;
+  }
+  return undefined;
 }
 
 /** Raw upload proxy: mounted BEFORE express.json so the body streams straight into storage. */
@@ -39,7 +64,7 @@ export function uploadRouter(): Router {
 
   router.post("/upload/presign", async (req, res) => {
     const creator = await requireCreator(req);
-    if (!creator) return res.status(403).json({ error: "creator not verified" });
+    if (!creator) return res.status(403).json({ error: "No Hedera account for this wallet yet. Fund it first." });
     const name = String(req.body?.name ?? "video.mp4");
     const videoId = newVideoId();
     const key = objectKeys.source(videoId, name);
@@ -50,7 +75,7 @@ export function uploadRouter(): Router {
   /** Upload complete: the video enters processing and the worker transcodes it. */
   router.post("/upload/complete", async (req, res) => {
     const creator = await requireCreator(req);
-    if (!creator) return res.status(403).json({ error: "creator not verified" });
+    if (!creator) return res.status(403).json({ error: "No Hedera account for this wallet yet. Fund it first." });
     const body = req.body as { videoId?: string; key?: string; title?: string; description?: string; durationSeconds?: number };
     if (!body.videoId || !body.key) return res.status(400).json({ error: "videoId and key required" });
     const duration = Math.max(1, Number(body.durationSeconds) || 60);
@@ -75,7 +100,7 @@ export function uploadRouter(): Router {
 
   router.post("/upload/publish", async (req, res) => {
     const creator = await requireCreator(req);
-    if (!creator) return res.status(403).json({ error: "creator not verified" });
+    if (!creator) return res.status(403).json({ error: "No Hedera account for this wallet yet. Fund it first." });
     const body = req.body as { videoId?: string; totalPrice?: string; freePreviewChunks?: number };
     const video = await db.query.videos.findFirst({ where: eq(videos.id, body.videoId ?? "") });
     if (!video || video.creator_id !== creator.id) return res.status(404).json({ error: "video not found" });

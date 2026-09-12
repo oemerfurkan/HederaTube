@@ -1,73 +1,76 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import { Lock } from "@phosphor-icons/react";
-import { Amount, Button } from "@/design/ui";
-import { gsap, EASE, DURATION } from "@/design/motion";
+import { useEffect, useState } from "react";
+import { Play } from "@phosphor-icons/react";
+import { UsdcMark, cn } from "@/design/ui";
 import { engine, useEngine } from "@/payments/sessionMachine";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import { formatUsdc } from "@/lib/money";
 import type { Video } from "@/api/types";
 
-/** Guide §6.4: one button, one line. Insufficient balance is caught here, never mid-playback. */
+/**
+ * One translucent play circle over the poster, though anywhere on the cover starts the video.
+ * The press connects, deposits or locks, whichever this viewer still needs, and the circle spins
+ * until the lock is on chain and playback takes over.
+ */
 export function LockCover({ video }: { video: Video }) {
   const status = useEngine(s => s.status);
   const error = useEngine(s => s.error);
   const wallet = useWallet();
-  const ref = useRef<HTMLDivElement>(null);
   const [gone, setGone] = useState(false);
   const covering = status === "idle" || status === "insufficient" || status === "locking";
 
-  useLayoutEffect(() => {
-    if (!ref.current) return;
-    if (covering) {
-      setGone(false);
-      gsap.set(ref.current, { opacity: 1 });
-      return;
-    }
-    const tween = gsap.to(ref.current, { opacity: 0, duration: DURATION.route, ease: EASE, onComplete: () => setGone(true) });
-    return () => {
-      tween.kill();
-    };
+  // a plain CSS fade: it still runs when the tab is not painting frames, unlike a tweened one
+  useEffect(() => {
+    if (covering) setGone(false);
   }, [covering]);
 
   if (gone) return null;
   const price = BigInt(video.total_price);
   const connected = wallet.status === "ready";
+  const busy = status === "locking" || wallet.status === "connecting" || wallet.status === "onboarding";
+  const label = !connected ? "Connect a wallet to watch" : status === "insufficient" ? "Add funds to watch" : "Play";
+
+  const onPress = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (busy) return;
+    if (!connected || status === "insufficient") {
+      wallet.openSheet();
+      return;
+    }
+    void engine.lock().catch(() => undefined);
+  };
+
   return (
-    <div ref={ref} className="absolute inset-0 grid place-items-center bg-ink/70 backdrop-blur-[2px]">
+    <div
+      onClick={onPress}
+      onTransitionEnd={() => {
+        if (!covering) setGone(true);
+      }}
+      className={cn(
+        "absolute inset-0 grid place-items-center bg-black/55 transition-opacity duration-300 ease-ht",
+        covering ? "cursor-pointer opacity-100" : "pointer-events-none opacity-0",
+      )}
+    >
       <div className="grid justify-items-center gap-3 px-6 text-center">
-        {!connected ? (
-          <>
-            <Button variant="chain" size="lg" onClick={wallet.openSheet} loading={wallet.status === "connecting" || wallet.status === "onboarding"}>
-              Connect wallet to watch
-            </Button>
-            <div className="text-small text-[#AAAAAA]">
-              This video costs <Amount value={price} /> for the full watch
-            </div>
-          </>
-        ) : status === "insufficient" ? (
-          <>
-            <Button variant="chain" size="lg" onClick={wallet.openSheet}>
-              Deposit to watch
-            </Button>
-            <div className="text-small text-[#AAAAAA]">You need {formatUsdc(price)} USDC for this video</div>
-          </>
-        ) : status === "locking" ? (
-          <>
-            <Button variant="chain" size="lg" loading disabled>
-              Locking
-            </Button>
-            <div className="text-small text-[#AAAAAA]">Locking on Hedera…</div>
-          </>
-        ) : (
-          <>
-            <Button variant="chain" size="lg" onClick={() => void engine.lock().catch(() => undefined)}>
-              <Lock size={18} />
-              Lock {formatUsdc(price)} USDC and watch
-            </Button>
-            <div className="text-small text-[#AAAAAA]">Unwatched time is refunded</div>
-            {error ? <div className="max-w-[420px] text-small text-destructive">{error}</div> : null}
-          </>
-        )}
+        <button
+          type="button"
+          aria-label={label}
+          title={label}
+          onClick={onPress}
+          className="grid size-[128px] place-items-center rounded-pill bg-black/60 text-white backdrop-blur-sm transition-colors duration-[180ms] ease-ht hover:bg-black/50 active:bg-black/40"
+        >
+          {busy ? (
+            <span className="size-16 animate-spin-ht rounded-pill border-4 border-white/25 border-t-white" />
+          ) : (
+            <Play size={56} weight="fill" className="translate-x-[3px]" />
+          )}
+        </button>
+        {/* only the states the viewer has to fix say anything at all */}
+        {status === "insufficient" ? (
+          <div className="flex items-center gap-1 text-[14px] leading-5 text-white/80">
+            You need {formatUsdc(price)} <UsdcMark size={13} /> for this video
+          </div>
+        ) : null}
+        {error ? <div className="max-w-[420px] text-[14px] leading-5 text-destructive">{error}</div> : null}
       </div>
     </div>
   );

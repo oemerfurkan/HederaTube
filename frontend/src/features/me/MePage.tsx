@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Amount, Badge, Button, cn } from "@/design/ui";
-import { useEarnings, useMe } from "@/api/hooks";
+import { Amount, Badge, Button, UsdcMark, cn } from "@/design/ui";
+import { useEarnings } from "@/api/hooks";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import { WalletPanel } from "@/features/wallet/WalletPanel";
 import { ActiveLocks } from "@/features/wallet/ActiveLocks";
@@ -13,7 +13,6 @@ const TABS = ["Watch", "Wallet", "Earnings"] as const;
 export function MePage() {
   const wallet = useWallet();
   const navigate = useNavigate();
-  const me = useMe(wallet.address);
   const [tab, setTab] = useState<(typeof TABS)[number]>("Watch");
   if (wallet.status !== "ready") {
     return (
@@ -37,15 +36,9 @@ export function MePage() {
           ))}
         </div>
         <div className="ml-auto">
-          {me.data?.verified ? (
-            <Button variant="secondary" onClick={() => navigate("/upload")}>
-              Upload
-            </Button>
-          ) : (
-            <Button variant="secondary" onClick={() => navigate("/verify")}>
-              Verify to create
-            </Button>
-          )}
+          <Button variant="secondary" onClick={() => navigate("/upload")}>
+            Upload
+          </Button>
         </div>
       </div>
       {tab === "Watch" ? <WatchTab /> : null}
@@ -74,8 +67,8 @@ function WatchTab() {
             <div key={r.sessionId} className="flex items-center gap-3 rounded-md bg-surface-2 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[14px] font-medium">{r.videoTitle}</div>
-                <div className="text-small tabular text-muted-fg">
-                  paid {formatUsdc(r.watched)} · refunded {formatUsdc(r.refunded)}
+                <div className="flex items-center gap-1 text-small tabular text-muted-fg">
+                  paid {formatUsdc(r.watched)} <UsdcMark size={12} /> · refunded {formatUsdc(r.refunded)} <UsdcMark size={12} />
                 </div>
               </div>
               <Badge tone={r.phase === "settled" ? "settled" : "pending"}>{r.phase === "settled" ? "Settled" : "Settling"}</Badge>
@@ -106,11 +99,11 @@ function EarningsTab() {
         </Summary>
       </div>
       {data && data.rows.length === 0 ? (
-        <p className="text-small text-muted-fg">No videos yet. Verify with World ID and upload your first one.</p>
+        <p className="text-small text-muted-fg">No videos yet. Upload your first one.</p>
       ) : (
         <ul className="grid gap-1">
           {data?.rows.map(row => (
-            <li key={row.video_id} className={cn("flex items-center gap-3 rounded-md px-2 py-2.5 hover:bg-surface-2", row.status === "payout pending" && "opacity-80")}>
+            <li key={row.video_id} className={cn("flex items-center gap-3 rounded-md px-2 py-2.5 hover:bg-surface-2", row.status === "payout pending" && "opacity-60")}>
               <img src={row.thumbnail_url} alt="" className="h-[34px] w-14 rounded-sm object-cover" />
               <div className="min-w-0 flex-1">
                 <Link to={`/watch/${row.video_id}`} className="block truncate text-[14px] font-medium">
@@ -118,13 +111,17 @@ function EarningsTab() {
                 </Link>
                 <div className="text-[12px] tabular text-muted-fg">{row.chunks_served.toLocaleString()} chunks served</div>
               </div>
-              <span className="text-[14px] font-medium tabular text-chain-fg">+{formatUsdc(row.earned)}</span>
+              <span className={cn("inline-flex items-center gap-1 text-[14px] font-medium tabular", row.status === "settled" ? "text-positive" : "text-muted-fg")}>
+                +{formatUsdc(row.earned)} <UsdcMark size={12} />
+              </span>
               {row.status === "settled" ? (
                 <Badge tone="settled">Settled</Badge>
               ) : row.status === "processing" ? (
                 <Badge tone="pending">Processing</Badge>
               ) : (
-                <Badge tone="pending">payout pending · +{formatUsdc(row.pending)}</Badge>
+                <Badge tone="pending">
+                  payout pending · +{formatUsdc(row.pending)} <UsdcMark size={11} />
+                </Badge>
               )}
             </li>
           ))}
@@ -136,7 +133,7 @@ function EarningsTab() {
 
 function Summary({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-1 rounded-card bg-surface p-6 shadow-1">
+    <div className="grid gap-1 rounded-card border border-border bg-surface p-6">
       <span className="label-caps text-muted-fg">{label}</span>
       <span className="text-numeric">{children}</span>
     </div>

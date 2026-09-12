@@ -19,6 +19,15 @@ export function useVideoSessions(videoId: string | undefined, tab: "recent" | "t
   });
 }
 
+/** Whether this wallet already liked the video, so the heart comes back filled after a reload. */
+export function useLikeState(videoId: string | undefined, viewer: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.videoLike(videoId ?? "", viewer ?? ""),
+    queryFn: () => api.likeState(videoId!, viewer!),
+    enabled: !!videoId && !!viewer,
+  });
+}
+
 export function useReceiptQuery(sessionId: string, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.receipt(sessionId),

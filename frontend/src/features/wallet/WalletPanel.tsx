@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Copy, Check, ArrowSquareOut } from "@phosphor-icons/react";
-import { Amount, Button, Mono, Toggle } from "@/design/ui";
+import { Amount, Button, Mono } from "@/design/ui";
 import { approxUsd } from "@/lib/money";
 import { hashscanAccountUrl } from "@/lib/hedera";
 import { useWallet } from "./WalletProvider";
@@ -19,7 +19,7 @@ export function WalletPanel() {
     setTimeout(() => setCopied(false), 1200);
   };
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-5">
       <div className="grid gap-3">
         <div className="flex items-center gap-2">
           <Mono block className="flex-1 text-fg">
@@ -58,13 +58,6 @@ export function WalletPanel() {
       </div>
 
       {depositOpen ? <DepositPanel onClose={() => setDepositOpen(false)} /> : null}
-
-      <Toggle
-        checked={wallet.autoApprove}
-        onChange={wallet.setAutoApprove}
-        label="Auto-approve chunks"
-        help="No signature prompt while watching"
-      />
 
       <ActiveLocks />
     </div>
