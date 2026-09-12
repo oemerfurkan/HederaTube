@@ -2,7 +2,7 @@
 
 Resource server (Express 4 + `@x402/express`) and worker (BullMQ) for pay-per-chunk video on
 Hedera with USDC through the x402 `batch-settlement` scheme. Implements the HTTP contract the
-frontend's mock defines (`frontend/src/mocks/**`), on Postgres + Redis + Garage (S3).
+frontend expects, on Postgres + Redis + Garage (S3).
 
 ## Run locally
 
@@ -25,7 +25,7 @@ Prerequisites: Postgres and Redis reachable (`brew services start postgresql@14 
 (`cd ../facilitator && pnpm dev`) **without** `HEDERA_RECEIVER_AUTHORIZER_*` in its env, ffmpeg on
 PATH for the worker. `STORAGE_DRIVER=fs` keeps objects under `./storage`; `s3` targets Garage.
 
-Then point the frontend at it: `VITE_API_MODE=real`, `VITE_ONBOARD_MODE=real`,
+Then point the frontend at it: `VITE_API_TARGET=http://localhost:4021`,
 `VITE_MIRROR_CONTRACT_CALL_URL=https://testnet.mirrornode.hedera.com`.
 
 ## Verify against testnet
@@ -54,7 +54,7 @@ authorize claims and refunds; the facilitator must not advertise one.
 
 - `src/api` — Express app: `/api/*` routes, `/stream` session context (AsyncLocalStorage), x402 wiring (`stream/x402.ts`), handlers.
 - `src/worker` — BullMQ workers: `transcode` (ffmpeg → 2.5 s HLS, 720p) and `settlement`.
-- `src/shared` — env, db (Drizzle schema + read models), price/accounting (mirrors `frontend/src/lib/price.ts` and the mock's channel logic), storage (S3/fs), Redis adapters, Hedera helpers, x402 scheme/channel managers.
+- `src/shared` — env, db (Drizzle schema + read models), price/accounting (mirrors `frontend/src/lib/price.ts`), storage (S3/fs), Redis adapters, Hedera helpers, x402 scheme/channel managers.
 - `scripts` — `migrate`, `seed`, `e2e-testnet`, `garage-bootstrap.sh`.
 - `../docker-compose.yml` — production compose (Garage, Postgres, Redis, facilitator, api, worker, web) with Traefik labels for Dokploy; `../docker-compose.dev.yml` — infra only.
 
@@ -62,6 +62,7 @@ authorize claims and refunds; the facilitator must not advertise one.
 
 - World ID: `WORLD_VERIFY_MODE=real` signs each IDKit request with `WORLD_RP_SIGNING_KEY` for `WORLD_RP_ID` (`POST /api/verify/world/request`) and forwards the proof to World's v4 verify endpoint (`POST /api/verify/world`), storing the nullifier under the unique index on `creators`. `simulate` derives a nullifier from the wallet instead. Only the `.env` file is read; `.env-local` is the tracked template.
 - Settlement runs on the interval and also a few seconds after every session close (`requestSettlementSoon`, one coalesced job).
+- Uploads are for verified creators only: `presign`, `complete` and `publish` return 403 unless the wallet's creator row carries a World ID nullifier from the Selfie Check.
 - Faucet drips HBAR only (`FAUCET_HBAR`), once per address; USDC is not dripped.
 - `UPLOAD_MODE=proxy` streams browser uploads through `PUT /api/upload/put/:videoId/:name`; `presign` returns a presigned Garage URL and sets bucket CORS at startup.
 - Uploaded videos are transcoded by the worker; `ffprobe` duration overrides the client-reported one.
