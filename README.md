@@ -433,6 +433,10 @@ A new viewer then goes through the real faucet drip and USDC allowance approval,
 cd backend && pnpm e2e:testnet
 ```
 
+### Dokploy with Nixpacks
+
+Each service builds from the repository root with its own `nixpacks.toml` (`backend/`, `facilitator/`, `frontend/`), selected with `NIXPACKS_CONFIG_FILE`. Step-by-step settings, Garage initialisation and every environment variable are in [docs/deploy-dokploy.md](docs/deploy-dokploy.md).
+
 ### Production compose (Dokploy / Traefik)
 
 `docker-compose.yml` builds and runs Garage, Postgres, Redis, the facilitator, the API, the worker and the nginx-served web build. Traefik labels route `/api` and `/stream` to the API and everything else to the web container. Secrets and env come from `facilitator/.env`, `backend/.env`, the `secrets/garage_rpc_secret` and `secrets/garage_admin_token` files, and `POSTGRES_PASSWORD`, `S3_BUCKET`, `VITE_PRIVY_APP_ID`, `VITE_WORLD_APP_ID` and `VITE_WORLD_ENVIRONMENT` in the environment. A one-shot `garage-init` container creates the bucket and access key.

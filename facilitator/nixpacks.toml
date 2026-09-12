@@ -1,0 +1,30 @@
+# HederaTube x402 facilitator on Nixpacks (Dokploy).
+#   Build Type: Nixpacks   Build Path: /   (repository root: the facilitator links ../x402/typescript)
+#   Environment: NIXPACKS_CONFIG_FILE=facilitator/nixpacks.toml, plus the facilitator variables.
+providers = []
+
+[variables]
+CI = "true"
+
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+# the base image pins a 2023 package set without Node 22; this is the archive Nixpacks' own Node
+# provider uses (Node 22.19, pnpm 11 needs >= 22.13)
+nixpkgsArchive = "23f9169c4ccce521379e602cc82ed873a1f1b52b"
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = [
+  "npm install --global --prefix /usr/local pnpm@11.1.1",
+  "NODE_ENV=development pnpm --dir x402/typescript install --frozen-lockfile --filter '@x402/hedera...'",
+  "NODE_ENV=development pnpm --dir facilitator install --frozen-lockfile",
+]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = [
+  "pnpm --dir x402/typescript --filter '@x402/hedera...' run build",
+]
+
+[start]
+cmd = "cd facilitator && node_modules/.bin/tsx src/index.ts"

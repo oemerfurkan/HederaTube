@@ -1,0 +1,32 @@
+# HederaTube web app on Nixpacks (Dokploy).
+#   Build Type: Nixpacks   Build Path: /   (repository root: the app links ../x402/typescript)
+#   Environment: NIXPACKS_CONFIG_FILE=frontend/nixpacks.toml, plus the VITE_* variables, which are
+#   read at build time. The container serves the built app on $PORT (default 3000).
+providers = []
+
+[variables]
+CI = "true"
+
+[phases.setup]
+nixPkgs = ["nodejs_22"]
+# the base image pins a 2023 package set without Node 22; this is the archive Nixpacks' own Node
+# provider uses (Node 22.19, pnpm 11 needs >= 22.13)
+nixpkgsArchive = "23f9169c4ccce521379e602cc82ed873a1f1b52b"
+
+[phases.install]
+dependsOn = ["setup"]
+cmds = [
+  "npm install --global --prefix /usr/local pnpm@11.1.1",
+  "NODE_ENV=development pnpm --dir x402/typescript install --frozen-lockfile --filter '@x402/fetch...' --filter '@x402/core...'",
+  "NODE_ENV=development pnpm --dir frontend install --frozen-lockfile",
+]
+
+[phases.build]
+dependsOn = ["install"]
+cmds = [
+  "pnpm --dir x402/typescript --filter '@x402/fetch...' --filter '@x402/core...' run build",
+  "pnpm --dir frontend run build",
+]
+
+[start]
+cmd = "node frontend/scripts/serve.mjs"
