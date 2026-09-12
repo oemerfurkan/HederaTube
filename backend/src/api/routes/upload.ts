@@ -2,10 +2,8 @@ import { Router, type Request } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../../shared/db/client.js";
 import { videos } from "../../shared/db/schema.js";
-import { creatorByAddress, toVideo } from "../../shared/db/queries.js";
-import { HEDERA_ENTITY_ID_REGEX, newCreatorId, newVideoId, normalizeAddress } from "../../shared/ids.js";
-import { creators } from "../../shared/db/schema.js";
-import { findAccount } from "../../shared/hedera.js";
+import { ensureCreator, toVideo } from "../../shared/db/queries.js";
+import { HEDERA_ENTITY_ID_REGEX, newVideoId, normalizeAddress } from "../../shared/ids.js";
 import { objectKeys, storage } from "../../shared/storage.js";
 import { env } from "../../shared/env.js";
 import { getTranscodeQueue } from "../../shared/queues.js";
@@ -21,25 +19,8 @@ const MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024;
 async function requireCreator(req: Request) {
   const address = typeof req.body?.address === "string" ? normalizeAddress(req.body.address) : "";
   if (!address) return undefined;
-  const existing = await creatorByAddress(address);
-  if (existing) return existing;
   const bodyAccount = typeof req.body?.accountId === "string" && HEDERA_ENTITY_ID_REGEX.test(req.body.accountId) ? req.body.accountId : undefined;
-  const accountId = bodyAccount ?? (await findAccount(address).catch(() => undefined))?.account;
-  if (!accountId) return undefined;
-  const base = address.slice(2, 10);
-  let handle = base;
-  for (let i = 0; i < 5; i += 1) {
-    const [inserted] = await db
-      .insert(creators)
-      .values({ id: newCreatorId(), wallet_address: address, hedera_account_id: accountId, handle, display_name: base, verified_at: new Date() })
-      .onConflictDoNothing()
-      .returning();
-    if (inserted) return inserted;
-    const again = await creatorByAddress(address);
-    if (again) return again;
-    handle = `${base}-${i + 2}`;
-  }
-  return undefined;
+  return ensureCreator(address, bodyAccount);
 }
 
 /** Raw upload proxy: mounted BEFORE express.json so the body streams straight into storage. */
@@ -101,7 +82,7 @@ export function uploadRouter(): Router {
   router.post("/upload/publish", async (req, res) => {
     const creator = await requireCreator(req);
     if (!creator) return res.status(403).json({ error: "No Hedera account for this wallet yet. Fund it first." });
-    const body = req.body as { videoId?: string; totalPrice?: string; freePreviewChunks?: number };
+    const body = req.body as { videoId?: string; totalPrice?: string; freePreviewChunks?: number; title?: string; description?: string };
     const video = await db.query.videos.findFirst({ where: eq(videos.id, body.videoId ?? "") });
     if (!video || video.creator_id !== creator.id) return res.status(404).json({ error: "video not found" });
     if (video.status !== "ready") return res.status(409).json({ error: "video is still processing" });
@@ -115,7 +96,14 @@ export function uploadRouter(): Router {
     if (!receivable) return res.status(409).json({ error: "Creator account must be associated with USDC" });
     const [updated] = await db
       .update(videos)
-      .set({ total_price: body.totalPrice, free_preview_chunks: free, published_at: new Date() })
+      .set({
+        total_price: body.totalPrice,
+        free_preview_chunks: free,
+        published_at: new Date(),
+        // the form is still being typed when the file finishes uploading, so publish carries the final text
+        ...(typeof body.title === "string" && body.title.trim() ? { title: body.title.trim().slice(0, 200) } : {}),
+        ...(typeof body.description === "string" ? { description: body.description.trim().slice(0, 5000) } : {}),
+      })
       .where(eq(videos.id, video.id))
       .returning();
     res.json(await toVideo(updated, creator));

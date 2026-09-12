@@ -12,7 +12,7 @@ const options: { method: LoginMethod; title: string; sub: string; Icon: typeof G
 export function WalletSheet() {
   const wallet = useWallet();
   return (
-    <Sheet open={wallet.sheetOpen} onClose={wallet.closeSheet}>
+    <Sheet open={wallet.sheetOpen} onClose={wallet.closeSheet} variant="popover">
       {wallet.status === "disconnected" ? <Disconnected /> : null}
       {wallet.status === "connecting" ? <Connecting /> : null}
       {wallet.status === "onboarding" ? <Onboarding /> : null}
@@ -68,7 +68,7 @@ function Connecting() {
   return (
     <div className="grid justify-items-center gap-4 py-10 text-center">
       <Spinner tone="chain" className="size-8" />
-      <div className="text-[14px] text-muted-fg">Waiting for signature…</div>
+      <div className="text-[14px] text-muted-fg">Finish signing in with Privy…</div>
       <Button variant="ghost" size="sm" onClick={() => void wallet.logout()}>
         Cancel
       </Button>
@@ -81,7 +81,7 @@ function Onboarding() {
   const ob = wallet.onboarding;
   const steps = [
     { key: "account", label: "Creating your Hedera account", sub: "A little HBAR for gas, sent by HederaTube" },
-    { key: "allowance", label: "Allowing USDC deposits", sub: "One approval, then every lock is a single transaction" },
+    { key: "allowance", label: "Allowing USDC deposits", sub: "Associates USDC and approves once; every lock is then a single transaction" },
   ] as const;
   return (
     <div className="grid gap-5">

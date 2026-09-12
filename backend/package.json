@@ -22,6 +22,7 @@
     "@aws-sdk/lib-storage": "^3.700.0",
     "@aws-sdk/s3-request-presigner": "^3.700.0",
     "@hiero-ledger/sdk": "2.85.0",
+    "@worldcoin/idkit-server": "1.1.1",
     "@x402/core": "link:../x402/typescript/packages/core",
     "@x402/express": "link:../x402/typescript/packages/http/express",
     "@x402/fetch": "link:../x402/typescript/packages/http/fetch",

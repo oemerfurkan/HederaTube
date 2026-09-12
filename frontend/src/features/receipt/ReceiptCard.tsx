@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { X, ArrowSquareOut } from "@phosphor-icons/react";
-import { Amount, Badge, Mono } from "@/design/ui";
+import { Amount, Badge } from "@/design/ui";
 import { gsap, EASE, DURATION, prefersReducedMotion } from "@/design/motion";
 import { useReceiptQuery } from "@/api/hooks";
 import { useReceipts } from "@/payments/receipts";
@@ -8,9 +8,9 @@ import type { Receipt } from "@/payments/types";
 import { hashscanTxUrl } from "@/lib/hedera";
 
 /**
- * Guide §8. Phase one right after close: amber "Settling on Hedera", optimistic amounts.
- * Phase two when the batch confirms: green Settled + tx hash. Refunded is the hero line.
- * Amounts arrive final; the card slides in, the digits never count.
+ * Guide §8. Phase one right after close: "Settling on Hedera" with the amounts as the client knows
+ * them. Phase two when the batch confirms: "Settled". Paid is the hero line; Receipt opens the
+ * transaction that moved the money. The card slides in, the digits never count.
  */
 export function ReceiptCard({ receipt }: { receipt: Receipt }) {
   const { update, dismiss } = useReceipts();
@@ -45,39 +45,41 @@ export function ReceiptCard({ receipt }: { receipt: Receipt }) {
   const tx = settled ? receipt.settlementTx : receipt.refundTx;
   return (
     <div ref={ref} className="grid w-[340px] max-w-[calc(100vw-32px)] grid-cols-[minmax(0,1fr)] gap-3 overflow-hidden rounded-card bg-surface p-5 shadow-2 [&>*]:min-w-0">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2">
         <Badge tone={settled ? "settled" : "pending"}>{settled ? "Settled" : "Settling on Hedera"}</Badge>
-        <span className="min-w-0 flex-1 truncate text-small text-muted-fg">{receipt.videoTitle}</span>
         <button type="button" onClick={() => dismiss(receipt.sessionId)} className="rounded-pill p-1 text-muted-fg hover:bg-surface-2" aria-label="Close receipt">
           <X size={16} />
         </button>
       </div>
-      <dl className="grid gap-1.5 text-small">
+      <dl className="grid gap-1.5 text-[14px] leading-5">
         <Row label="Locked">
           <Amount value={receipt.locked} />
         </Row>
-        <Row label="Watched">
-          <Amount value={receipt.watched} /> <span className="text-muted-fg">· {receipt.watchedChunks} chunks</span>
-        </Row>
-        <Row label="To creator">
-          <Amount value={receipt.toCreator} />
+        <Row label="Refunded">
+          <Amount value={receipt.refunded} />
         </Row>
         <div className="mt-1 flex items-baseline justify-between border-t border-border pt-2.5">
-          <dt className="text-small text-muted-fg">Refunded</dt>
+          <dt className="text-muted-fg">
+            Paid <span className="text-[12px]">· {receipt.watchedChunks} chunks</span>
+          </dt>
           <dd>
-            <Amount value={receipt.refunded} className="text-[32px] font-bold tracking-[-0.02em] text-chain-fg" />
+            <Amount value={receipt.watched} className="text-[32px] font-bold tracking-[-0.02em] text-chain-fg" />
           </dd>
         </div>
       </dl>
       {tx ? (
-        <a href={hashscanTxUrl(tx)} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-sm bg-surface-2 px-3.5 py-3 hover:text-fg">
-          <Mono className="min-w-0 flex-1 truncate">{tx}</Mono>
-          <ArrowSquareOut size={14} className="text-muted-fg" />
+        <a
+          href={hashscanTxUrl(tx)}
+          target="_blank"
+          rel="noreferrer"
+          className="flex h-10 items-center justify-between rounded-pill bg-surface-2 px-4 text-[14px] font-medium transition-colors duration-[180ms] ease-ht hover:bg-surface-3"
+        >
+          Receipt
+          <ArrowSquareOut size={16} className="text-muted-fg" />
         </a>
       ) : (
-        <Mono block>waiting for transaction…</Mono>
+        <div className="flex h-10 items-center rounded-pill bg-surface-2 px-4 text-[14px] text-muted-fg">Waiting for the transaction…</div>
       )}
-      <div className="text-small text-muted-fg">Gas sponsored by HederaTube</div>
     </div>
   );
 }

@@ -1,34 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { UploadSimple } from "@phosphor-icons/react";
-import { Badge, Button, UsdcMark, cn } from "@/design/ui";
-import { useVideo } from "@/api/hooks";
+import { CheckCircle, Copy, UploadSimple } from "@phosphor-icons/react";
+import { Button, Spinner, UsdcMark, cn, toast } from "@/design/ui";
+import { useMe, useVideo } from "@/api/hooks";
+import { VerifyButton } from "@/features/verify/VerifyButton";
 import { api } from "@/api/client";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import { formatUsdc, parseUsdc } from "@/lib/money";
-import { MAX_FREE_PREVIEW_CHUNKS, chunkCount, minTotalPrice, perMinute, pricedChunkCount, suggestedTotalPrice } from "@/lib/price";
+import { chunkCount, formatClock, minTotalPrice, perMinute, pricedChunkCount, suggestedTotalPrice } from "@/lib/price";
 import { HEDERA_ENTITY_ID_REGEX } from "@/payments/x402-lite";
 
 const field =
   "h-11 w-full rounded-pill border border-input bg-bg px-[18px] text-body outline-none transition-all duration-[180ms] ease-ht focus:border-primary focus:ring-[3px] focus:ring-ring";
 
-/** Guide §6.8. Single column, 720 px. The price field unlocks when the transcode reports the duration. */
+/** Guide §6.8. The form on the left, a Studio-style preview card on the right. The price field unlocks when the transcode reports the duration. */
 export function UploadPage() {
   const wallet = useWallet();
   const navigate = useNavigate();
   const [file, setFile] = useState<File>();
+  const [previewSrc, setPreviewSrc] = useState<string>();
   const [progress, setProgress] = useState<number>();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [recipient, setRecipient] = useState("");
   const [priceText, setPriceText] = useState("");
-  const [freeChunks, setFreeChunks] = useState(0);
   const [videoId, setVideoId] = useState<string>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const video = useVideo(videoId);
   const status = video.data?.status;
+  const me = useMe(wallet.address);
 
   useEffect(() => {
     if (!videoId || status === "ready") return;
@@ -40,6 +42,9 @@ export function UploadPage() {
     if (wallet.accountId && !recipient) setRecipient(wallet.accountId);
   }, [wallet.accountId, recipient]);
 
+  // the local file plays in the preview card straight away; the object URL is released with the page
+  useEffect(() => () => void (previewSrc && URL.revokeObjectURL(previewSrc)), [previewSrc]);
+
   const duration = video.data?.duration_seconds;
   useEffect(() => {
     if (status === "ready" && duration && !priceText) setPriceText(formatUsdc(suggestedTotalPrice(duration)));
@@ -48,7 +53,7 @@ export function UploadPage() {
   const derived = useMemo(() => {
     if (!duration) return undefined;
     const chunks = chunkCount(duration);
-    const priced = pricedChunkCount(duration, freeChunks);
+    const priced = pricedChunkCount(duration, 0);
     let price: bigint | undefined;
     try {
       price = priceText ? parseUsdc(priceText) : undefined;
@@ -57,12 +62,22 @@ export function UploadPage() {
     }
     const min = minTotalPrice(priced);
     return { chunks, priced, price, min, perMin: price ? perMinute(price, duration) : undefined, tooLow: price !== undefined && price < min };
-  }, [duration, freeChunks, priceText]);
+  }, [duration, priceText]);
 
-  if (wallet.status !== "ready") return <p className="text-small text-muted-fg">Connect a wallet first.</p>;
+  if (wallet.status !== "ready") return <p className="text-[14px] leading-5 text-muted-fg">Connect a wallet first.</p>;
+  if (me.data && !me.data.verified) {
+    return (
+      <div className="mx-auto grid max-w-[480px] justify-items-center gap-3 rounded-card border border-dashed border-border px-6 py-12 text-center">
+        <div className="text-h2">Verify to create</div>
+        <p className="text-[14px] leading-5 text-muted-fg">Creators pass one World ID Selfie Check. Scan the code with World App and you are through.</p>
+        <VerifyButton />
+      </div>
+    );
+  }
 
   const pick = async (f: File) => {
     setFile(f);
+    setPreviewSrc(URL.createObjectURL(f));
     setError(undefined);
     const fallbackTitle = f.name.replace(/\.[^.]+$/, "");
     const chosenTitle = title || fallbackTitle;
@@ -91,7 +106,7 @@ export function UploadPage() {
     if (!videoId || !derived?.price || derived.tooLow) return;
     setBusy(true);
     try {
-      await api.publish({ videoId, totalPrice: derived.price.toString(), freePreviewChunks: freeChunks, address: wallet.address!, accountId: wallet.accountId });
+      await api.publish({ videoId, totalPrice: derived.price.toString(), freePreviewChunks: 0, title, description, address: wallet.address!, accountId: wallet.accountId });
       navigate(`/watch/${videoId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -103,8 +118,10 @@ export function UploadPage() {
   const recipientInvalid = recipient.length > 0 && !HEDERA_ENTITY_ID_REGEX.test(recipient);
 
   return (
-    <div className="mx-auto grid w-full max-w-[720px] gap-6">
+    <div className="mx-auto grid w-full max-w-[1080px] gap-6">
       <h1 className="text-h1">Upload</h1>
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-6">
       <div
         className={cn("grid justify-items-center gap-2 rounded-md border border-dashed border-border px-6 py-12 text-center", file && "border-solid")}
         onDragOver={e => e.preventDefault()}
@@ -132,7 +149,11 @@ export function UploadPage() {
             <div className="h-full rounded-pill bg-muted-fg transition-[width] duration-[180ms] ease-ht" style={{ width: `${progress}%` }} />
           </div>
         ) : null}
-        {videoId ? <Badge tone={status === "ready" ? "settled" : "pending"}>{status === "ready" ? "Ready" : "Processing"}</Badge> : null}
+        {file ? (
+          <div className="mt-1">
+            <ProcessingState status={videoId ? status ?? "processing" : undefined} progress={progress} />
+          </div>
+        ) : null}
       </div>
 
       <label className="grid gap-2 text-[13px] font-medium">
@@ -170,23 +191,17 @@ export function UploadPage() {
               </>
             ) : derived.price !== undefined ? (
               <>
-                {formatUsdc(derived.price)} <UsdcMark size={12} /> · {derived.priced} chunk · {formatUsdc(derived.perMin ?? 0n)} <UsdcMark size={12} /> per minute
-                {derived.perMin && derived.perMin > 10_000n ? " · unusually high" : ""}
+                {formatUsdc(derived.price)} <UsdcMark size={12} /> · {derived.priced} chunks · {formatUsdc(derived.perMin ?? 0n)} <UsdcMark size={12} /> per minute
               </>
             ) : (
               <>
-                {derived.chunks} chunk · suggested {formatUsdc(suggestedTotalPrice(duration!))} <UsdcMark size={12} />
+                {derived.chunks} chunks · suggested {formatUsdc(suggestedTotalPrice(duration!))} <UsdcMark size={12} />
               </>
             )}
           </span>
         ) : (
           <span className="text-[12px] text-muted-fg">The chunk count is known once the transcode finishes.</span>
         )}
-      </label>
-
-      <label className="grid gap-2 text-[13px] font-medium">
-        Free preview chunks (0–{MAX_FREE_PREVIEW_CHUNKS}, 5 s each)
-        <input type="number" min={0} max={MAX_FREE_PREVIEW_CHUNKS} value={freeChunks} onChange={e => setFreeChunks(Math.max(0, Math.min(MAX_FREE_PREVIEW_CHUNKS, Number(e.target.value) || 0)))} className={cn(field, "tabular")} />
       </label>
 
       {error ? <div className="rounded-md bg-destructive/12 p-3 text-[13px] text-destructive">{error}</div> : null}
@@ -198,7 +213,107 @@ export function UploadPage() {
           Publish
         </Button>
       </div>
+      </div>
+
+      <PreviewCard file={file} src={previewSrc} videoId={videoId} status={status} duration={duration} progress={progress} />
+      </div>
     </div>
+  );
+}
+
+/** One line that says where the file is in the pipeline, shared by the drop zone and the preview card. */
+function ProcessingState({ status, progress }: { status?: string; progress?: number }) {
+  if (status === "ready") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-positive-fg">
+        <CheckCircle size={16} weight="fill" /> Ready to publish
+      </span>
+    );
+  }
+  if (status) {
+    return (
+      <span className="inline-flex items-center gap-2 text-[13px] text-muted-fg">
+        <Spinner className="size-3.5" /> Processing, usually under a minute
+      </span>
+    );
+  }
+  if (progress !== undefined) {
+    return (
+      <span className="inline-flex items-center gap-2 text-[13px] tabular text-muted-fg">
+        <Spinner className="size-3.5" /> Uploading {progress}%
+      </span>
+    );
+  }
+  return null;
+}
+
+/** What the viewer will get: the file itself playing, the link it will live at, and where processing stands. */
+function PreviewCard({
+  file,
+  src,
+  videoId,
+  status,
+  duration,
+  progress,
+}: {
+  file?: File;
+  src?: string;
+  videoId?: string;
+  status?: string;
+  duration?: number;
+  progress?: number;
+}) {
+  const link = videoId ? `${window.location.origin}/watch/${videoId}` : undefined;
+  const copyLink = async () => {
+    if (!link) return;
+    await navigator.clipboard.writeText(link).catch(() => undefined);
+    toast("Video link copied");
+  };
+  return (
+    <aside className="grid gap-3 rounded-card bg-surface-2 p-3 lg:sticky lg:top-20">
+      <div className="aspect-video overflow-hidden rounded-md bg-black">
+        {src ? (
+          <video src={src} controls muted playsInline className="size-full object-contain" />
+        ) : (
+          <div className="grid size-full place-items-center px-4 text-center text-[12px] leading-[18px] text-muted-fg">Your video preview shows up here once you pick a file.</div>
+        )}
+      </div>
+      <dl className="grid gap-2.5 px-1 pb-1 text-[12px] leading-[18px]">
+        <div className="grid gap-0.5">
+          <dt className="text-muted-fg">Video link</dt>
+          <dd className="flex items-center gap-2">
+            {link ? (
+              <>
+                <a href={link} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate font-medium text-chain-fg hover:underline">
+                  {link.replace(/^https?:\/\//, "")}
+                </a>
+                <button type="button" onClick={copyLink} aria-label="Copy video link" className="grid size-7 shrink-0 place-items-center rounded-pill text-muted-fg hover:bg-surface-3 hover:text-fg">
+                  <Copy size={14} />
+                </button>
+              </>
+            ) : (
+              <span className="text-muted-fg">Available once the upload starts</span>
+            )}
+          </dd>
+        </div>
+        <div className="grid gap-0.5">
+          <dt className="text-muted-fg">Filename</dt>
+          <dd className="truncate font-medium">{file?.name ?? "—"}</dd>
+        </div>
+        <div className="grid gap-0.5">
+          <dt className="text-muted-fg">Length</dt>
+          <dd className="font-medium tabular">{duration ? formatClock(duration) : "—"}</dd>
+        </div>
+        {file ? (
+          <div className="grid gap-0.5">
+            <dt className="text-muted-fg">Status</dt>
+            <dd>
+              <ProcessingState status={videoId ? status ?? "processing" : undefined} progress={progress} />
+            </dd>
+          </div>
+        ) : null}
+      </dl>
+    </aside>
   );
 }
 

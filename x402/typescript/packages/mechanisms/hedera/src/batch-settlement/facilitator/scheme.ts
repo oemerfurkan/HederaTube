@@ -204,7 +204,7 @@ export class BatchSettlementHederaScheme implements SchemeNetworkFacilitator {
         payload,
         rawPayload,
         requirements,
-        { simulateBeforeSend: this.simulateBeforeSend, gas: this.gas.deposit },
+        { simulateBeforeSend: this.simulateBeforeSend, gas: this.gas.deposit, pollMs: this.mirrorLagPollMs },
         this.pendingStore,
       );
     }

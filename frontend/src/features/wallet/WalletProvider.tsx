@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { PrivyProvider, getEmbeddedConnectedWallet, useLogin, usePrivy, useWallets } from "@privy-io/react-auth";
+import { PrivyProvider, getEmbeddedConnectedWallet, useLogin, usePrivy, useWallets, type WalletWithMetadata } from "@privy-io/react-auth";
 import { hederaTestnet } from "viem/chains";
 import type { ClientHederaBatchSigner } from "@/payments/x402-lite";
 import { createPrivySigner, type Eip1193Provider } from "@/payments/privySigner";
@@ -7,6 +7,7 @@ import { loadOrCreateLocalSigner, localProvider } from "@/payments/localSigner";
 import { runOnboarding, type OnboardingState } from "@/payments/onboarding";
 import { API_MODE, PRIVY_APP_ID, USDC_TOKEN_ID, WALLET_MODE } from "@/lib/hedera";
 import { getTokenBalance } from "@/lib/mirror";
+import { deriveDevSolanaAddress } from "@/lib/solana";
 import { useBalanceQuery } from "@/api/hooks";
 
 export type LoginMethod = "google" | "email" | "wallet";
@@ -17,6 +18,8 @@ export type WalletContextValue = {
   status: WalletStatus;
   address?: `0x${string}`;
   accountId?: string;
+  /** Solana embedded wallet (Privy) or a key derived from the dev signer (local). */
+  solanaAddress?: string;
   signer?: ClientHederaBatchSigner;
   balance?: bigint;
   onboarding?: OnboardingState;
@@ -41,6 +44,7 @@ export function useWallet(): WalletContextValue {
 
 type Bridge = {
   address?: `0x${string}`;
+  solanaAddress?: string;
   connecting: boolean;
   ready: boolean;
   loginImpl: (method: LoginMethod) => void;
@@ -134,6 +138,7 @@ function useWalletCore(bridge: Bridge, mode: "privy" | "local"): WalletContextVa
     status,
     address,
     accountId,
+    solanaAddress: bridge.solanaAddress,
     signer,
     balance: mockLedger ? balanceQuery.data : mirrorBalance,
     onboarding,
@@ -158,12 +163,18 @@ function useWalletCore(bridge: Bridge, mode: "privy" | "local"): WalletContextVa
 }
 
 function PrivyBridge({ children }: { children: ReactNode }) {
-  const { ready, authenticated, logout } = usePrivy();
-  const { login } = useLogin();
-  const { wallets, ready: walletsReady } = useWallets();
+  const { ready, authenticated, logout, user } = usePrivy();
   const [connecting, setConnecting] = useState(false);
+  // Privy owns the modal: whether the user finishes or backs out of it, "connecting" is over.
+  const { login } = useLogin({ onComplete: () => setConnecting(false), onError: () => setConnecting(false) });
+  const { wallets, ready: walletsReady } = useWallets();
   const embedded = getEmbeddedConnectedWallet(wallets) ?? wallets[0];
   const address = authenticated && embedded ? (embedded.address as `0x${string}`) : undefined;
+  // The Solana embedded wallet is read off the user object: the "/solana" entry of the SDK needs
+  // optional peer packages that this app does not ship.
+  const solanaAddress = authenticated
+    ? user?.linkedAccounts.find((a): a is WalletWithMetadata => a.type === "wallet" && a.chainType === "solana")?.address
+    : undefined;
 
   useEffect(() => {
     if (authenticated && walletsReady) setConnecting(false);
@@ -172,17 +183,21 @@ function PrivyBridge({ children }: { children: ReactNode }) {
   const bridge: Bridge = useMemo(
     () => ({
       address,
+      solanaAddress,
       ready,
       connecting: connecting && !address,
       loginImpl: method => {
         setConnecting(true);
         login({ loginMethods: [method] });
       },
-      logoutImpl: logout,
+      logoutImpl: async () => {
+        setConnecting(false);
+        await logout();
+      },
       getProvider: embedded ? () => embedded.getEthereumProvider() as Promise<Eip1193Provider> : undefined,
       switchChain: embedded ? chainId => embedded.switchChain(chainId) : undefined,
     }),
-    [address, ready, connecting, login, logout, embedded],
+    [address, solanaAddress, ready, connecting, login, logout, embedded],
   );
   const value = useWalletCore(bridge, "privy");
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
@@ -193,8 +208,21 @@ const LOCAL_CONNECTED_KEY = "ht:local-wallet:connected";
 function LocalBridge({ children }: { children: ReactNode }) {
   const [signer, setSigner] = useState<ClientHederaBatchSigner>();
   const [privateKey, setPrivateKey] = useState<`0x${string}`>();
+  const [solanaAddress, setSolanaAddress] = useState<string>();
   const [connecting, setConnecting] = useState(false);
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!privateKey) {
+      setSolanaAddress(undefined);
+      return;
+    }
+    let live = true;
+    void deriveDevSolanaAddress(privateKey).then(value => live && setSolanaAddress(value));
+    return () => {
+      live = false;
+    };
+  }, [privateKey]);
 
   // Reconnect the dev key on reload when the user had connected before.
   useEffect(() => {
@@ -219,6 +247,7 @@ function LocalBridge({ children }: { children: ReactNode }) {
   const bridge: Bridge = useMemo(
     () => ({
       address: signer?.evmAddress,
+      solanaAddress,
       ready,
       connecting,
       loginImpl: () => {
@@ -247,7 +276,7 @@ function LocalBridge({ children }: { children: ReactNode }) {
       localSigner: signer,
       getProvider: privateKey ? () => Promise.resolve(localProvider(privateKey)) : undefined,
     }),
-    [signer, privateKey, connecting, ready],
+    [signer, privateKey, solanaAddress, connecting, ready],
   );
   const value = useWalletCore(bridge, "local");
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
@@ -259,9 +288,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       <PrivyProvider
         appId={PRIVY_APP_ID}
         config={{
-          appearance: { theme: "dark", accentColor: "#8259EF", walletChainType: "ethereum-only" },
+          appearance: { theme: "dark", accentColor: "#8259EF", walletChainType: "ethereum-and-solana" },
           loginMethods: ["google", "email", "wallet"],
-          embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" }, showWalletUIs: false },
+          embeddedWallets: {
+            ethereum: { createOnLogin: "users-without-wallets" },
+            solana: { createOnLogin: "all-users" },
+            showWalletUIs: false,
+          },
           defaultChain: hederaTestnet,
           supportedChains: [hederaTestnet],
         }}

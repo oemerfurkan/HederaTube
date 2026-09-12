@@ -86,7 +86,12 @@ async function buildFacilitator(): Promise<{
 
   facilitator.register(
     NETWORK,
-    new BatchSettlementHederaScheme(signer, authorizer, { simulateBeforeSend }),
+    new BatchSettlementHederaScheme(signer, authorizer, {
+      simulateBeforeSend,
+      // HederaTube's resource server verifies vouchers against its own channel store, so nothing
+      // reads the channel from the Mirror Node right after a deposit: answer once consensus is in.
+      mirrorLagPollMs: Number(process.env.HEDERA_MIRROR_LAG_POLL_MS ?? 0),
+    }),
   );
 
   console.log(`network:              ${NETWORK}`);

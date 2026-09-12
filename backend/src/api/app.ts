@@ -6,8 +6,7 @@ import { videosRouter } from "./routes/videos.js";
 import { sessionRouter } from "./routes/session.js";
 import { meRouter } from "./routes/me.js";
 import { onboardRouter } from "./routes/onboard.js";
-// World ID verification is parked: see routes/verify.ts (commented out).
-// import { verifyRouter } from "./routes/verify.js";
+import { verifyRouter } from "./routes/verify.js";
 import { uploadProxyRouter, uploadRouter } from "./routes/upload.js";
 import { devRouter } from "./routes/dev.js";
 import { loadSession } from "./stream/context.js";
@@ -31,7 +30,7 @@ export async function buildApp(): Promise<Express> {
   api.use(sessionRouter());
   api.use(meRouter());
   api.use(onboardRouter());
-  // api.use(verifyRouter());
+  api.use(verifyRouter());
   api.use(uploadRouter());
   if (env.DEV_ENDPOINTS) api.use(devRouter());
   app.use("/api", api);

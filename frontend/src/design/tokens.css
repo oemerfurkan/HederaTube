@@ -121,6 +121,7 @@
   --animate-spin-ht: ht-spin 700ms linear infinite;
   --animate-chunk-tick: chunk-tick 1.2s ease-in-out infinite;
   --animate-toast-in: ht-toast-in 220ms var(--ease-ht) both;
+  --animate-pop-in: ht-pop-in 220ms var(--ease-ht) both;
   --animate-like-pop: ht-like-pop 340ms var(--ease-ht);
   --animate-roll-up-in: ht-roll-up-in 260ms var(--ease-ht) both;
   --animate-roll-up-out: ht-roll-up-out 260ms var(--ease-ht) both;
@@ -136,6 +137,12 @@
     from {
       opacity: 0;
       transform: translateY(8px) scale(0.98);
+    }
+  }
+  @keyframes ht-pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
     }
   }
   @keyframes ht-like-pop {

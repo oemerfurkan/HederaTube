@@ -3,7 +3,7 @@ export type VideoStatus = "processing" | "ready" | "failed";
 export type Video = {
   id: string;
   creator_id: string;
-  creator: { handle: string; display_name: string; hedera_account_id: string; subscribers: number };
+  creator: { handle: string; display_name: string; hedera_account_id: string };
   title: string;
   description: string;
   duration_seconds: number;
@@ -85,12 +85,12 @@ export type EarningsResponse = {
 export type Me = {
   address: string;
   verified: boolean;
-  creator: { handle: string; display_name: string; hedera_account_id: string } | null;
+  creator: { handle: string; display_name: string; description: string; hedera_account_id: string } | null;
   spent_today: string;
 };
 
 export type ChannelResponse = {
-  creator: { handle: string; display_name: string; hedera_account_id: string; subscribers: number };
+  creator: { handle: string; display_name: string; description: string; hedera_account_id: string };
   videos: Video[];
   total_earned: string;
   sessions: number;

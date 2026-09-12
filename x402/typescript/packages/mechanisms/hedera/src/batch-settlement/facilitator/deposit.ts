@@ -40,6 +40,12 @@ import {
 
 /** Facilitator options that affect deposit handling. */
 export type DepositExecutionOptions = {
+  /**
+   * How long to poll the Mirror Node after a confirmed deposit before answering with the
+   * optimistic state (default `CHANNEL_STATE_POLL_MS`). `0` skips the read entirely: the
+   * transaction has reached consensus, so `balance + amount` is already the truth on chain.
+   */
+  pollMs?: number;
   /** Run a Mirror Node simulation of `deposit` before accepting/broadcasting (default true). */
   simulateBeforeSend?: boolean;
   /** Gas limit override for the deposit transaction. */
@@ -482,18 +488,22 @@ export async function settleDeposit(
           let extra = channelStateExtra(voucher.channelId, optimistic);
 
           // Poll until the Mirror Node reflects the confirmed deposit so later verify reads see it.
-          const deadline = Date.now() + CHANNEL_STATE_POLL_MS;
-          try {
-            let postState = await readChannelState(signer, voucher.channelId, network);
-            while (postState.balance < optimistic.balance && Date.now() < deadline) {
-              await new Promise(resolve => setTimeout(resolve, CHANNEL_STATE_POLL_INTERVAL_MS));
-              postState = await readChannelState(signer, voucher.channelId, network);
+          // Servers that verify vouchers locally can set `pollMs: 0` and skip the wait.
+          const pollMs = options.pollMs ?? CHANNEL_STATE_POLL_MS;
+          if (pollMs > 0) {
+            const deadline = Date.now() + pollMs;
+            try {
+              let postState = await readChannelState(signer, voucher.channelId, network);
+              while (postState.balance < optimistic.balance && Date.now() < deadline) {
+                await new Promise(resolve => setTimeout(resolve, CHANNEL_STATE_POLL_INTERVAL_MS));
+                postState = await readChannelState(signer, voucher.channelId, network);
+              }
+              if (postState.balance >= optimistic.balance) {
+                extra = channelStateExtra(voucher.channelId, postState);
+              }
+            } catch {
+              // Keep the optimistic snapshot when post-deposit reads fail.
             }
-            if (postState.balance >= optimistic.balance) {
-              extra = channelStateExtra(voucher.channelId, postState);
-            }
-          } catch {
-            // Keep the optimistic snapshot when post-deposit reads fail.
           }
 
           return {

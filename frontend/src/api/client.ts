@@ -71,6 +71,8 @@ export const api = {
     request<{ txId: string; accountId: string }>("/api/onboard/faucet", { method: "POST", json: { address } }),
   me: (address: string) => request<Me>(`/api/me?address=${address}`),
   earnings: (address: string) => request<EarningsResponse>(`/api/me/earnings?address=${address}`),
+  updateProfile: (body: { address: string; accountId?: string; displayName?: string; description?: string }) =>
+    request<Me>("/api/me/profile", { method: "PUT", json: body }),
   channel: (handle: string) => request<ChannelResponse>(`/api/channel/${handle}`),
   likeState: (videoId: string, viewer: string) =>
     request<{ likes: number; liked: boolean }>(`/api/video/${videoId}/like?viewer=${viewer}`),
@@ -88,16 +90,17 @@ export const api = {
     address: string;
     accountId?: string;
   }) => request<Video>("/api/upload/complete", { method: "POST", json: body }),
-  publish: (body: { videoId: string; totalPrice: string; freePreviewChunks: number; address: string; accountId?: string }) =>
+  publish: (body: { videoId: string; totalPrice: string; freePreviewChunks: number; title?: string; description?: string; address: string; accountId?: string }) =>
     request<Video>("/api/upload/publish", { method: "POST", json: body }),
-  // World ID (parked): re-enable together with features/verify/VerifyPage.tsx and the backend verify router.
-  // worldRequest: (address: string) =>
-  //   request<{ rp_id: string; nonce: string; created_at: number; expires_at: number; signature: string }>("/api/verify/world/request", {
-  //     method: "POST",
-  //     json: { address },
-  //   }),
-  // verifyWorld: (body: { address: string; accountId?: string; proof: unknown; handle: string; displayName: string }) =>
-  //   request<Me>("/api/verify/world", { method: "POST", json: body }),
+  /** Signed relying-party context for one IDKit request; `simulated` when the server is not wired to World. */
+  worldRequest: (address: string) =>
+    request<{ rp_id: string; nonce: string; created_at: number; expires_at: number; signature: string; action: string; simulated?: boolean }>(
+      "/api/verify/world/request",
+      { method: "POST", json: { address } },
+    ),
+  /** Sends the IDKit result for verification and marks the wallet's creator as human-backed. */
+  verifyWorld: (body: { address: string; accountId?: string; result?: unknown; simulated?: boolean }) =>
+    request<Me>("/api/verify/world", { method: "POST", json: body }),
   runBatch: () => request<{ settled: number; txHash: string | null }>("/api/dev/run-batch", { method: "POST" }),
   resetMock: () => request<{ ok: true }>("/api/dev/reset", { method: "POST" }),
 };

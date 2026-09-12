@@ -23,6 +23,8 @@ export type ViewingSession = {
   lockUrl: string;
   closeUrl: string;
   creatorAccountId: string;
+  /** Set once the lock is on chain; close must not re-probe the close route for it. */
+  channelId?: `0x${string}`;
 };
 
 export type ReceiptPhase = "settling" | "settled";

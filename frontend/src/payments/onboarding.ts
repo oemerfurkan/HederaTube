@@ -1,7 +1,7 @@
 import { api } from "@/api/client";
 import { ONBOARD_MODE, CHAIN_ID } from "@/lib/hedera";
 import { getAccount, pollUntil } from "@/lib/mirror";
-import { ALLOWANCE_THRESHOLD, approveCollectorAllowance, readCollectorAllowance } from "./allowance";
+import { ALLOWANCE_THRESHOLD, approveCollectorAllowance, ensureUsdcAssociation, readCollectorAllowance } from "./allowance";
 import type { Eip1193Provider } from "./privySigner";
 
 export type OnboardingStep = "account" | "allowance" | "ready";
@@ -68,7 +68,9 @@ export async function runOnboarding(options: {
       }
       try {
         await options.switchChain?.(CHAIN_ID);
-        const result = await approveCollectorAllowance({ provider: await options.getProvider(), from: address, accountId });
+        const provider = await options.getProvider();
+        await ensureUsdcAssociation({ provider, from: address, accountId });
+        const result = await approveCollectorAllowance({ provider, from: address, accountId });
         approveTx = result.txHash;
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

@@ -2,13 +2,14 @@ import { and, count, desc, eq, gt, inArray, ne, or, sql as raw } from "drizzle-o
 import { db } from "./client.js";
 import { charges, creators, likes, sessions, settlements, videos, type CreatorRow, type SessionRow, type VideoRow } from "./schema.js";
 import { badgeOf, earningsStatus, receiptRefunded, servedChunks } from "../accounting.js";
-import { normalizeAddress } from "../ids.js";
+import { newCreatorId, normalizeAddress } from "../ids.js";
+import { findAccount } from "../hedera.js";
 
 /** Public video shape (mirrors frontend/src/api/types.ts `Video`). */
 export type VideoOut = {
   id: string;
   creator_id: string;
-  creator: { handle: string; display_name: string; hedera_account_id: string; subscribers: number };
+  creator: { handle: string; display_name: string; hedera_account_id: string };
   title: string;
   description: string;
   duration_seconds: number;
@@ -37,7 +38,7 @@ export async function toVideo(video: VideoRow, creator?: CreatorRow): Promise<Vi
   return {
     id: video.id,
     creator_id: video.creator_id,
-    creator: { handle: c.handle, display_name: c.display_name, hedera_account_id: c.hedera_account_id, subscribers: c.subscribers },
+    creator: { handle: c.handle, display_name: c.display_name, hedera_account_id: c.hedera_account_id },
     title: video.title,
     description: video.description,
     duration_seconds: video.duration_seconds,
@@ -152,8 +153,11 @@ export async function meOf(address: string) {
     .where(and(eq(sessions.viewer_address, addr), raw`${sessions.started_at}::date = (now() at time zone 'utc')::date`));
   return {
     address,
-    verified: !!creator,
-    creator: creator ? { handle: creator.handle, display_name: creator.display_name, hedera_account_id: creator.hedera_account_id } : null,
+    // "verified" means a World ID Selfie Check backs this wallet, not merely that a creator row exists
+    verified: !!creator?.world_nullifier_hash,
+    creator: creator
+      ? { handle: creator.handle, display_name: creator.display_name, description: creator.description, hedera_account_id: creator.hedera_account_id }
+      : null,
     spent_today: row?.spent ?? "0",
   };
 }
@@ -200,7 +204,12 @@ export async function channelOf(handle: string) {
     ? await db.select().from(sessions).where(and(inArray(sessions.video_id, vids.map(v => v.id)), gt(sessions.chunks_consumed, 0)))
     : [];
   return {
-    creator: { handle: creator.handle, display_name: creator.display_name, hedera_account_id: creator.hedera_account_id, subscribers: creator.subscribers },
+    creator: {
+      handle: creator.handle,
+      display_name: creator.display_name,
+      description: creator.description,
+      hedera_account_id: creator.hedera_account_id,
+    },
     videos: await toVideos(vids.filter(v => v.status === "ready" && BigInt(v.total_price) > 0n)),
     total_earned: ss.reduce((a, s) => a + BigInt(s.consumed_amount), 0n).toString(),
     sessions: ss.length + vids.reduce((a, v) => a + v.seed_views, 0),
@@ -212,3 +221,36 @@ export async function recordCharge(sessionId: string, chunkIndex: number, priced
 }
 
 export { ne };
+
+/**
+ * Every connected wallet is a creator (World ID is parked): the row is opened the first time it is
+ * needed, on upload or when the profile is edited. The Hedera account id comes from the client or
+ * the Mirror Node and is required for payouts.
+ */
+export async function ensureCreator(address: string, accountIdHint?: string) {
+  const addr = normalizeAddress(address);
+  const existing = await creatorByAddress(addr);
+  if (existing) return existing;
+  const accountId = accountIdHint ?? (await findAccount(addr).catch(() => undefined))?.account;
+  if (!accountId) return undefined;
+  const base = addr.slice(2, 10);
+  let handle = base;
+  for (let i = 0; i < 5; i += 1) {
+    const [inserted] = await db
+      .insert(creators)
+      .values({ id: newCreatorId(), wallet_address: addr, hedera_account_id: accountId, handle, display_name: base, verified_at: new Date() })
+      .onConflictDoNothing()
+      .returning();
+    if (inserted) return inserted;
+    const again = await creatorByAddress(addr);
+    if (again) return again;
+    handle = `${base}-${i + 2}`;
+  }
+  return undefined;
+}
+
+/** Channel name and description as the creator wants them shown. */
+export async function updateCreatorProfile(creatorId: string, patch: { display_name?: string; description?: string }) {
+  const [row] = await db.update(creators).set(patch).where(eq(creators.id, creatorId)).returning();
+  return row;
+}

@@ -10,6 +10,7 @@ import { env } from "../../shared/env.js";
 import { logger } from "../../shared/logger.js";
 import { NETWORK, USDC_TOKEN_ID } from "../../shared/hedera.js";
 import { getX402Runtime } from "../../shared/x402/scheme.js";
+import { requestSettlementSoon } from "../../shared/queues.js";
 import { currentStream } from "./context.js";
 
 const ERR_PAYLOAD_TYPE = "invalid_batch_settlement_hedera_payload_type";
@@ -145,6 +146,7 @@ export async function buildPaymentMiddleware(): Promise<unknown> {
             last_activity_at: now,
           })
           .where(eq(sessions.id, ctx.session.id));
+        void requestSettlementSoon();
       }
     } catch (err) {
       logger.error({ err, sessionId: ctx.session.id, type: payload.type }, "failed to persist settlement");

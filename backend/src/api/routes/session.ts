@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../../shared/db/client.js";
+import { requestSettlementSoon } from "../../shared/queues.js";
 import { creators, sessions, videos } from "../../shared/db/schema.js";
 import { receiptOf } from "../../shared/db/queries.js";
 import { newSessionId, normalizeAddress } from "../../shared/ids.js";
@@ -57,6 +58,7 @@ export function sessionRouter(): Router {
       } else {
         await db.update(sessions).set({ status: "closing", close_reason: reason ?? "leave" }).where(eq(sessions.id, session.id));
       }
+      void requestSettlementSoon();
     }
     res.json({ ok: true });
   });

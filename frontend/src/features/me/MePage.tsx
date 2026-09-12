@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Amount, Badge, Button, UsdcMark, cn } from "@/design/ui";
-import { useEarnings } from "@/api/hooks";
+import { Amount, Badge, Button, UsdcMark, cn, toast } from "@/design/ui";
+import { useEarnings, useMe, useUpdateProfile } from "@/api/hooks";
 import { useWallet } from "@/features/wallet/WalletProvider";
 import { WalletPanel } from "@/features/wallet/WalletPanel";
 import { ActiveLocks } from "@/features/wallet/ActiveLocks";
 import { useReceipts } from "@/payments/receipts";
 import { formatUsdc } from "@/lib/money";
 
-const TABS = ["Watch", "Wallet", "Earnings"] as const;
+const TABS = ["Watch", "Wallet", "Earnings", "Profile"] as const;
 
 export function MePage() {
   const wallet = useWallet();
@@ -43,11 +43,18 @@ export function MePage() {
       </div>
       {tab === "Watch" ? <WatchTab /> : null}
       {tab === "Wallet" ? (
-        <div className="max-w-[480px]">
-          <WalletPanel />
+        <div className="grid max-w-[480px] gap-6">
+          <WalletPanel showChannelLink={false} showDisconnect={false} />
+          <ActiveLocks />
+          <div className="border-t border-border pt-4">
+            <Button variant="outline" onClick={() => void wallet.logout()}>
+              Disconnect wallet
+            </Button>
+          </div>
         </div>
       ) : null}
       {tab === "Earnings" ? <EarningsTab /> : null}
+      {tab === "Profile" ? <ProfileTab /> : null}
     </div>
   );
 }
@@ -127,6 +134,69 @@ function EarningsTab() {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+const field =
+  "w-full rounded-pill border border-input bg-bg px-[18px] text-body outline-none transition-all duration-[180ms] ease-ht focus:border-primary focus:ring-[3px] focus:ring-ring";
+
+/** Channel name and description: what viewers see on cards, on the watch page and on the channel page. */
+function ProfileTab() {
+  const wallet = useWallet();
+  const me = useMe(wallet.address);
+  const save = useUpdateProfile();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [seeded, setSeeded] = useState(false);
+
+  // fill the form once from the server; after that the draft is the user's
+  useEffect(() => {
+    if (seeded || !me.data) return;
+    setName(me.data.creator?.display_name ?? "");
+    setDescription(me.data.creator?.description ?? "");
+    setSeeded(true);
+  }, [me.data, seeded]);
+
+  const dirty = !!me.data && (name !== (me.data.creator?.display_name ?? "") || description !== (me.data.creator?.description ?? ""));
+  const submit = async () => {
+    if (!wallet.address || !name.trim()) return;
+    try {
+      await save.mutateAsync({ address: wallet.address, accountId: wallet.accountId, displayName: name.trim(), description: description.trim() });
+      toast("Profile saved");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not save the profile");
+    }
+  };
+
+  return (
+    <div className="grid max-w-[560px] gap-5">
+      <label className="grid gap-2 text-[13px] font-medium">
+        Channel name
+        <input value={name} onChange={e => setName(e.target.value)} maxLength={60} placeholder="Your channel" className={cn(field, "h-11")} />
+      </label>
+      <label className="grid gap-2 text-[13px] font-medium">
+        Description
+        <textarea
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          rows={5}
+          maxLength={1000}
+          placeholder="What people will find on this channel"
+          className="w-full resize-y rounded-md border border-input bg-bg px-4 py-3 text-body font-normal leading-[1.5] outline-none focus:border-primary focus:ring-[3px] focus:ring-ring"
+        />
+        <span className="text-[12px] font-normal text-muted-fg">Shown on your channel page. The name is what appears under every video.</span>
+      </label>
+      {me.data?.creator ? (
+        <div className="text-[12px] text-muted-fg">
+          Handle <span className="font-mono text-fg">@{me.data.creator.handle}</span> · payouts to <span className="font-mono text-fg">{me.data.creator.hedera_account_id}</span>
+        </div>
+      ) : null}
+      <div className="flex justify-end">
+        <Button variant="chain" onClick={submit} disabled={!dirty || !name.trim()} loading={save.isPending}>
+          Save
+        </Button>
+      </div>
     </div>
   );
 }

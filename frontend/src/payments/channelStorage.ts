@@ -40,6 +40,8 @@ export const channelMeta = {
   save: (payer: string, meta: ChannelMeta) => set(metaKey(payer, meta.channelId), meta, db()),
   get: (payer: string, channelId: string) => get<ChannelMeta>(metaKey(payer, channelId), db()),
   remove: (payer: string, channelId: string) => del(metaKey(payer, channelId), db()),
+  /** Forget a channel entirely, SDK context and side record, once the server says it is over. */
+  prune: (payer: string, channelId: string) => createChannelStorage(payer).delete(channelId),
   /** Channels that still hold a deposit (balance > charged) for this payer. */
   async listActive(payer: string): Promise<(ChannelMeta & { context: BatchSettlementClientContext })[]> {
     const all = await entries<string, unknown>(db());

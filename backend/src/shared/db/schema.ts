@@ -11,6 +11,7 @@ export const creators = pgTable("creators", {
   hedera_account_id: text("hedera_account_id").notNull(),
   handle: text("handle").notNull().unique(),
   display_name: text("display_name").notNull(),
+  description: text("description").notNull().default(""),
   world_nullifier_hash: text("world_nullifier_hash").unique(),
   verified_at: timestamp("verified_at", { withTimezone: true }),
   subscribers: integer("subscribers").notNull().default(0),

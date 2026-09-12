@@ -1,0 +1,1 @@
+ALTER TABLE "creators" ADD COLUMN "description" text DEFAULT '' NOT NULL;

@@ -28,6 +28,19 @@ export async function getTokenBalance(accountId: string, tokenId: string): Promi
   return row ? BigInt(row.balance) : 0n;
 }
 
+/** Whether the account has a token relationship (explicit or automatic) with `tokenId`. */
+export async function hasTokenAssociation(accountId: string, tokenId: string): Promise<boolean> {
+  const data = await getJson<{ tokens: { token_id: string }[] }>(
+    `${MIRROR_NODE_URL}/api/v1/accounts/${encodeURIComponent(accountId)}/tokens?token.id=${tokenId}`,
+  );
+  return !!data?.tokens.some(t => t.token_id === tokenId);
+}
+
+/** Outcome of an Ethereum-style transaction as the Mirror Node recorded it; undefined until indexed. */
+export async function getContractResult(txHash: string): Promise<{ result: string } | undefined> {
+  return getJson<{ result: string }>(`${MIRROR_NODE_URL}/api/v1/contracts/results/${encodeURIComponent(txHash)}`);
+}
+
 export async function getTokenAllowance(
   ownerId: string,
   spenderId: string,

@@ -23,6 +23,7 @@ export type CreatorRow = {
   hedera_account_id: string;
   handle: string;
   display_name: string;
+  description?: string;
   world_nullifier_hash: string | null;
   verified_at: string | null;
   subscribers: number;

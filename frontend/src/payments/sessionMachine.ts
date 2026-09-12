@@ -125,6 +125,7 @@ export class SessionEngine {
         );
       }
       const channelId = await this.channelIdFor(session);
+      session.channelId = channelId;
       await channelMeta.save(this.signer.evmAddress, {
         channelId,
         sessionId: session.sessionId,
@@ -271,7 +272,10 @@ export class SessionEngine {
         await api.closeSession(session.sessionId, reason).catch(() => undefined);
         this.set({ error: describe(error) });
       }
-      await channelMeta.remove(this.signer!.evmAddress, await this.channelIdFor(session)).catch(() => undefined);
+      // The close route stops answering 402 once the session is over, so re-probing it here used to
+      // throw and leave a ghost "active lock" behind. Use the id remembered at lock time.
+      const channelId = session.channelId ?? (await this.channelIdFor(session).catch(() => undefined));
+      if (channelId) await channelMeta.prune(this.signer!.evmAddress, channelId).catch(() => undefined);
       receiptsStore.getState().update(session.sessionId, { refundTx });
       this.set({ status: "closed" });
     })();

@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { channelOf, earningsOf, meOf } from "../../shared/db/queries.js";
+import { channelOf, earningsOf, ensureCreator, meOf, updateCreatorProfile } from "../../shared/db/queries.js";
+import { HEDERA_ENTITY_ID_REGEX } from "../../shared/ids.js";
 import { findAccount, tokenBalanceOf } from "../../shared/hedera.js";
 
 export function meRouter(): Router {
@@ -9,6 +10,23 @@ export function meRouter(): Router {
     const address = typeof req.query.address === "string" ? req.query.address : "";
     if (!address) return res.status(400).json({ error: "address required" });
     res.json(await meOf(address));
+  });
+
+  /** Channel name and description. Opens the creator row if this wallet has never uploaded. */
+  router.put("/me/profile", async (req, res) => {
+    const body = (req.body ?? {}) as { address?: string; accountId?: string; displayName?: string; description?: string };
+    if (typeof body.address !== "string" || !body.address) return res.status(400).json({ error: "address required" });
+    const displayName = typeof body.displayName === "string" ? body.displayName.trim().slice(0, 60) : undefined;
+    const description = typeof body.description === "string" ? body.description.trim().slice(0, 1000) : undefined;
+    if (displayName !== undefined && !displayName) return res.status(400).json({ error: "channel name cannot be empty" });
+    const accountHint = typeof body.accountId === "string" && HEDERA_ENTITY_ID_REGEX.test(body.accountId) ? body.accountId : undefined;
+    const creator = await ensureCreator(body.address, accountHint);
+    if (!creator) return res.status(409).json({ error: "This wallet has no Hedera account yet" });
+    await updateCreatorProfile(creator.id, {
+      ...(displayName !== undefined ? { display_name: displayName } : {}),
+      ...(description !== undefined ? { description } : {}),
+    });
+    res.json(await meOf(body.address));
   });
 
   router.get("/me/earnings", async (req, res) => {

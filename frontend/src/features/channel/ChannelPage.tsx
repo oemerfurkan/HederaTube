@@ -18,8 +18,8 @@ export function ChannelPage() {
           <div className="flex flex-wrap items-center gap-3 text-small text-muted-fg">
             <span>@{c.creator.handle}</span>
             <Mono>{c.creator.hedera_account_id}</Mono>
-            <span className="tabular">{c.creator.subscribers.toLocaleString()} subscribers</span>
           </div>
+          {c.creator.description ? <p className="mt-1 max-w-[640px] whitespace-pre-line text-[14px] leading-5 text-muted-fg">{c.creator.description}</p> : null}
         </div>
         <div className="ml-auto grid grid-cols-2 gap-3">
           <Stat label="Earned">

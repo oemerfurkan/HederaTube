@@ -14,4 +14,6 @@ export { Sheet } from "./Sheet";
 export { Spinner } from "./Spinner";
 export { Toaster, toast } from "./Toast";
 export { RollingNumber } from "./RollingNumber";
+export { ChainMark } from "./ChainMark";
+export type { Chain } from "./ChainMark";
 export { cn } from "./cn";

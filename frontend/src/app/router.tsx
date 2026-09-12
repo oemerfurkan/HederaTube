@@ -5,7 +5,6 @@ import { WatchPage } from "@/features/watch/WatchPage";
 import { ChannelPage } from "@/features/channel/ChannelPage";
 import { MePage } from "@/features/me/MePage";
 // World ID verification is parked: route disabled until it comes back.
-// import { VerifyPage } from "@/features/verify/VerifyPage";
 import { UploadPage } from "@/features/upload/UploadPage";
 
 export const router = createBrowserRouter([
@@ -17,7 +16,6 @@ export const router = createBrowserRouter([
       { path: "watch/:videoId", Component: WatchPage },
       { path: "channel/:handle", Component: ChannelPage },
       { path: "me", Component: MePage },
-      // { path: "verify", Component: VerifyPage },
       { path: "upload", Component: UploadPage },
     ],
   },

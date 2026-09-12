@@ -20,6 +20,9 @@ importers:
       '@hiero-ledger/sdk':
         specifier: 2.85.0
         version: 2.85.0(bn.js@5.2.3)(react-native@0.87.1(@babel/core@7.29.7)(react@19.3.0))
+      '@worldcoin/idkit-server':
+        specifier: 1.1.1
+        version: 1.1.1
       '@x402/core':
         specifier: link:../x402/typescript/packages/core
         version: link:../x402/typescript/packages/core
@@ -842,6 +845,9 @@ packages:
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
 
+  '@noble/secp256k1@2.3.0':
+    resolution: {integrity: sha512-0TQed2gcBbIrh7Ccyw+y/uZQvbJwm7Ao4scBUxqpBCcsOlZG0O4KGfjtNAy/li4W8n1xt3dxrwJ0beZ2h2G6Kw==}
+
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
 
@@ -1237,6 +1243,10 @@ packages:
 
   '@vitest/utils@3.2.7':
     resolution: {integrity: sha512-x6BDOd7dyo3PFLY3I9/HJ25X/6OurhGXk2/B9gOZNPF7XDVjeBK4k01lQE5uvDpbuheErh91qYuE1E2OEjK3Rw==}
+
+  '@worldcoin/idkit-server@1.1.1':
+    resolution: {integrity: sha512-iO4Kd3QBLzJak3BPz5eIzRjW0kT8Px5c3LbNzvCKMnczLvVSKoWqdvGiJlkK8Dp29KstNI62iv4ak0z8nzui/Q==}
+    engines: {node: '>=18'}
 
   abitype@1.2.3:
     resolution: {integrity: sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg==}
@@ -3480,6 +3490,8 @@ snapshots:
 
   '@noble/hashes@1.8.0': {}
 
+  '@noble/secp256k1@2.3.0': {}
+
   '@pinojs/redact@0.4.0': {}
 
   '@protobufjs/aspromise@1.1.2': {}
@@ -3853,6 +3865,11 @@ snapshots:
       '@vitest/pretty-format': 3.2.7
       loupe: 3.2.1
       tinyrainbow: 2.0.0
+
+  '@worldcoin/idkit-server@1.1.1':
+    dependencies:
+      '@noble/hashes': 1.8.0
+      '@noble/secp256k1': 2.3.0
 
   abitype@1.2.3(typescript@5.9.3)(zod@3.25.76):
     optionalDependencies:

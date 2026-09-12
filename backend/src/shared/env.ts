@@ -46,6 +46,11 @@ const schema = z.object({
     .transform(v => v !== "false"),
   WORLD_VERIFY_MODE: z.enum(["simulate", "real"]).default("simulate"),
   WORLD_APP_ID: z.string().optional(),
+  /** Relying-party id and signing key from the World Developer Portal; both required in real mode. */
+  WORLD_RP_ID: z.string().optional(),
+  WORLD_RP_SIGNING_KEY: z.string().optional(),
+  WORLD_ACTION: z.string().default("hederatube-creator"),
+  WORLD_ENVIRONMENT: z.enum(["production", "staging", "sandbox"]).default("production"),
 
   SEED_CREATOR_ACCOUNT_ID: z.string().default("0.0.10463864"),
   SEED_CREATOR_WALLET: z.string().default("0x00000000000000000000000000000000009faa78"),

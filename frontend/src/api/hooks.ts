@@ -34,6 +34,8 @@ export function useReceiptQuery(sessionId: string, enabled: boolean) {
     queryFn: () => api.receipt(sessionId),
     enabled,
     refetchInterval: query => (query.state.data?.status === "settled" ? false : 3000),
+    // the card sits in a corner while the viewer moves on; keep polling even when the tab is not focused
+    refetchIntervalInBackground: true,
   });
 }
 
@@ -48,6 +50,19 @@ export function useBalanceQuery(address: string | undefined, mockLedger: boolean
 
 export function useMe(address: string | undefined) {
   return useQuery({ queryKey: queryKeys.me(address ?? ""), queryFn: () => api.me(address!), enabled: !!address });
+}
+
+/** Saves the channel name and description, then refreshes everything that prints them. */
+export function useUpdateProfile() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { address: string; accountId?: string; displayName?: string; description?: string }) => api.updateProfile(body),
+    onSuccess: (_data, body) => {
+      void client.invalidateQueries({ queryKey: queryKeys.me(body.address) });
+      void client.invalidateQueries({ queryKey: queryKeys.videos });
+      void client.invalidateQueries({ queryKey: ["channel"] });
+    },
+  });
 }
 
 export function useEarnings(address: string | undefined) {
