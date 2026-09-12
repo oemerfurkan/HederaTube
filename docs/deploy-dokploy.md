@@ -55,7 +55,9 @@ Keep the key id and secret for the backend. `20G` is the capacity Garage may use
 | Build Path | `/` (the repository root; every app links `x402/typescript` from there) |
 | `NIXPACKS_CONFIG_FILE` | `backend/nixpacks.toml`, `facilitator/nixpacks.toml` or `frontend/nixpacks.toml` |
 
-The configs pin Node 22.19 and pnpm 11.1.1, install and build only the `x402` packages each app needs, then build the app. Frontend `VITE_*` variables are read at build time, so a change to them needs a rebuild, not just a restart.
+Write the variable exactly as `NIXPACKS_CONFIG_FILE=frontend/nixpacks.toml`: no quotes, no leading slash, saved before you deploy. If it does not reach the build, the root `nixpacks.toml` stops the build with a message saying so; a wrong path fails with `Config file … does not exist`.
+
+The configs pin Node 22.19 and pnpm 11.1.1, install and build only the `x402` packages each app needs, then build the app. Frontend `VITE_*` variables are read at build time, so a change to them needs a rebuild, not just a restart. Dokploy hands every variable of the app to the Nixpacks build, which is why Docker warns about keys in `ARG`/`ENV`: the keys end up in the image, so do not push these images to a public registry.
 
 ## 3. Facilitator
 

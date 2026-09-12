@@ -16,16 +16,17 @@ nixpkgsArchive = "23f9169c4ccce521379e602cc82ed873a1f1b52b"
 [phases.install]
 dependsOn = ["setup"]
 cmds = [
+  # the base image's PATH has no /usr/local/bin, so pnpm is always called by its full path
   "npm install --global --prefix /usr/local pnpm@11.1.1",
-  "NODE_ENV=development pnpm --dir x402/typescript install --frozen-lockfile --filter '@x402/hedera...' --filter '@x402/express...' --filter '@x402/fetch...'",
-  "NODE_ENV=development pnpm --dir backend install --frozen-lockfile",
+  "NODE_ENV=development /usr/local/bin/pnpm --dir x402/typescript install --frozen-lockfile --filter '@x402/hedera...' --filter '@x402/express...' --filter '@x402/fetch...'",
+  "NODE_ENV=development /usr/local/bin/pnpm --dir backend install --frozen-lockfile",
 ]
 
 [phases.build]
 dependsOn = ["install"]
 cmds = [
-  "pnpm --dir x402/typescript --filter '@x402/hedera...' --filter '@x402/express...' --filter '@x402/fetch...' run build",
-  "pnpm --dir backend run build",
+  "/usr/local/bin/pnpm --dir x402/typescript --filter '@x402/hedera...' --filter '@x402/express...' --filter '@x402/fetch...' run build",
+  "/usr/local/bin/pnpm --dir backend run build",
 ]
 
 [start]

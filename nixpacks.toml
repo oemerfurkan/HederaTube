@@ -1,0 +1,14 @@
+# Root fallback. Each HederaTube service has its own plan; Nixpacks only lands here when the
+# NIXPACKS_CONFIG_FILE variable did not reach the build, so stop with a message that says so.
+providers = []
+
+[phases.setup]
+nixPkgs = []
+
+[phases.build]
+cmds = [
+  "echo 'HederaTube: NIXPACKS_CONFIG_FILE is not set for this app. Add it in the Environment tab: backend/nixpacks.toml, frontend/nixpacks.toml or facilitator/nixpacks.toml' >&2 && exit 1",
+]
+
+[start]
+cmd = "false"
