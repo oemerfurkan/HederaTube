@@ -1,0 +1,19 @@
+# Build context for the Nixpacks images: only what the three services need.
+# Everything below x402/ except the TypeScript workspace is other languages, contracts and examples.
+.git
+x402/examples
+x402/contracts
+x402/python
+x402/go
+x402/java
+x402/e2e
+x402/specs
+x402/docs
+x402/foundation
+x402/static
+x402/.github
+**/node_modules
+**/dist
+backend/storage
+frontend/public/demo
+secrets
