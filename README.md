@@ -7,11 +7,11 @@
 
 **Pay-per-second video on Hedera. Lock the price of a video in USDC, pay only for the seconds you watch, get the rest back automatically.**
 
-[Live app](https://hederatube.xyz) · [Source](https://github.com/oemerfurkan/HederaTube) · [X](https://x.com/oemerfurkan)
+[Live app](https://hederatube.xyz) · [Source](https://github.com/oemerfurkan/HederaTube) · [X](https://x.com/oemerfurkan) · [x402 upstream PR](https://github.com/x402-foundation/x402/pull/3466)
 
 HederaTube is a video platform where viewers pay creators per 5-second chunk with off-chain signed vouchers, backed by a USDC escrow on Hedera. There is no subscription, no ads, and no per-request blockchain transaction: a viewing session costs the viewer one deposit at the start and one refund at the end, and the creator receives everything they earned in a single settlement transaction that can cover thousands of sessions.
 
-It is built on the open [x402](https://github.com/x402-foundation/x402) payment standard, for which this repository contributes a native Hedera implementation of the `batch-settlement` scheme (smart contracts, SDK, spec and examples).
+It is built on the open [x402](https://github.com/x402-foundation/x402) payment standard, for which this repository contributes a native Hedera implementation of the `batch-settlement` scheme (smart contracts, SDK, spec and examples). The scheme is proposed upstream in [x402-foundation/x402#3466](https://github.com/x402-foundation/x402/pull/3466).
 
 ---
 
@@ -290,7 +290,7 @@ The EIP-712 domain is `x402 Batch Settlement` version `1`, bound to chain id 296
 
 **Wire format.** `PaymentRequirements.payTo` and `asset` are Hedera entity ids (`0.0.x`); `channelConfig` fields are EVM addresses; `SettleResponse.transaction` is a Hedera transaction id (`0.0.x@seconds.nanos`). The 402 for a HederaTube segment carries `extra.assetTransferMethod = "hts-allowance"`, `extra.receiverAuthorizer`, `extra.withdrawDelay` and `extra.minDeposit = video price`. Payload types are `deposit`, `voucher` and `refund` from the client; `claim` and `settle` from the server. Responses carry `PAYMENT-RESPONSE` with `extra.chargedAmount` and `extra.channelState` (`balance`, `totalClaimed`, `chargedCumulativeAmount`, `refundNonce`, …).
 
-The full protocol, verification rules and error codes are in the [Hedera batch-settlement spec](x402/specs/schemes/batch-settlement/scheme_batch_settlement_hedera.md).
+The full protocol, verification rules and error codes are in the [Hedera batch-settlement spec](x402/specs/schemes/batch-settlement/scheme_batch_settlement_hedera.md). The contracts, `@x402/hedera` package and spec are submitted to the x402 repository in [pull request #3466](https://github.com/x402-foundation/x402/pull/3466).
 
 ### Frontend
 
