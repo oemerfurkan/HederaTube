@@ -18,18 +18,18 @@ export function WatchPage() {
   const video = useVideo(videoId);
   const wallet = useWallet();
   const status = useEngine(s => s.status);
-  const activeSessionVideo = useEngine(s => s.session?.videoId);
+  const hasSession = useEngine(s => !!s.session);
+  const engineVideoId = useEngine(s => s.video?.id);
 
-  // Prepare the engine for this video; the lock cover depends on the balance.
+  // Prepare the engine for this video; the lock cover depends on the balance. While a session is
+  // around (this video's, or the previous video's still refunding) the engine is not ours to touch:
+  // the reset after that close clears it and this runs again.
   useEffect(() => {
-    if (!video.data) return;
-    if (activeSessionVideo === video.data.id && status !== "closed") return;
-    if (status === "idle" || status === "insufficient" || status === "closed") {
-      engine.prepare(video.data, wallet.signer, wallet.balance);
-    }
-  }, [video.data, wallet.signer, wallet.balance, activeSessionVideo, status]);
+    if (!video.data || hasSession) return;
+    if (status === "idle" || status === "insufficient") engine.prepare(video.data, wallet.signer, wallet.balance);
+  }, [video.data, wallet.signer, wallet.balance, hasSession, engineVideoId, status]);
 
-  // Leaving the page closes the session (refund); a different video resets the engine.
+  // Leaving the page, or picking another video, closes the session (refund) and resets the engine.
   useEffect(() => {
     return () => {
       void engine.close("leave").finally(() => engine.reset());
@@ -42,7 +42,8 @@ export function WatchPage() {
   return (
     <div className="flex flex-col pt-3 lg:flex-row">
       <div className="grid min-w-0 flex-1 content-start gap-3 px-4 lg:pr-4">
-        <Player video={v} />
+        {/* a fresh player per video: new poster, no last frame or buffer carried over */}
+        <Player key={v.id} video={v} />
         <TitleBlock video={v} />
         <DescriptionCard video={v} />
         <SessionList video={v} />

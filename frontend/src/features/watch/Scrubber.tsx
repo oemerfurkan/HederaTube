@@ -58,7 +58,7 @@ export function PlayerControls({
   return (
     <div
       className={cn(
-        "absolute inset-x-0 bottom-0 grid gap-2 bg-gradient-to-t from-black/50 to-transparent px-3 pb-3 pt-8 text-white transition-opacity duration-[180ms] ease-ht",
+        "absolute inset-x-0 bottom-0 grid gap-2 bg-gradient-to-t from-black/50 to-transparent px-2 pb-2 pt-8 text-white sm:px-3 sm:pb-3 transition-opacity duration-[180ms] ease-ht",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
       )}
       onClick={stop}
@@ -73,31 +73,41 @@ export function PlayerControls({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <span className="inline-flex h-12 items-center rounded-pill bg-black/50 px-1 backdrop-blur-sm">
-          <button type="button" onClick={onTogglePlay} disabled={!playing} aria-label={paused ? "Play" : "Pause"} className="grid size-10 place-items-center rounded-pill hover:bg-white/15 disabled:opacity-50">
-            {paused ? <Play size={22} weight="fill" /> : <Pause size={22} weight="fill" />}
+      {/* One row at every width: below sm the pills shrink and the price drops out of the counter. */}
+      <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap sm:gap-2">
+        <span className="inline-flex h-10 shrink-0 items-center rounded-pill bg-black/50 px-0.5 backdrop-blur-sm sm:h-12 sm:px-1">
+          <button type="button" onClick={onTogglePlay} disabled={!playing} aria-label={paused ? "Play" : "Pause"} className="grid size-9 place-items-center rounded-pill hover:bg-white/15 disabled:opacity-50 sm:size-10">
+            {paused ? <Play size={20} weight="fill" className="sm:size-[22px]" /> : <Pause size={20} weight="fill" className="sm:size-[22px]" />}
           </button>
-          <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"} className="grid size-10 place-items-center rounded-pill hover:bg-white/15">
-            {muted ? <SpeakerSlash size={22} /> : <SpeakerHigh size={22} />}
+          <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"} className="grid size-9 max-[359px]:hidden place-items-center rounded-pill hover:bg-white/15 sm:size-10">
+            {muted ? <SpeakerSlash size={20} className="sm:size-[22px]" /> : <SpeakerHigh size={20} className="sm:size-[22px]" />}
           </button>
         </span>
-        <span className="inline-flex h-12 items-center rounded-pill bg-black/50 px-4 text-[14px] font-medium tabular backdrop-blur-sm">
+        <span className="inline-flex h-10 shrink-0 items-center rounded-pill bg-black/50 px-3 text-[12px] font-medium tabular backdrop-blur-sm sm:h-12 sm:px-4 sm:text-[14px]">
           {formatClock(currentTime)} / {formatClock(duration)}
         </span>
-        <span className="ml-auto inline-flex h-12 items-center gap-1 rounded-pill bg-black/50 pl-4 pr-1 backdrop-blur-sm">
-          <span className="hidden text-[12px] tabular text-white/80 sm:inline">
+        <span className="ml-auto inline-flex h-10 shrink-0 items-center gap-1 rounded-pill bg-black/50 pl-1 pr-0.5 backdrop-blur-sm sm:h-12 sm:pl-4 sm:pr-1">
+          <span className="hidden text-[12px] tabular text-white/80 md:inline">
             chunk {chunkLabel} / {chunks}
             {free > 0 ? ` · ${free} free` : ""}
           </span>
-          <span className={cn("mx-2 inline-flex h-8 items-center gap-2 rounded-pill px-3 text-[12px] font-medium tabular", interrupted ? "bg-destructive/40 text-white" : "bg-chain/35 text-white")}>
-            <span className={cn("size-[7px] rounded-pill", interrupted ? "bg-destructive" : "bg-chain", playing && !interrupted && "animate-chunk-tick")} />
-            <span>
-              <Amount value={charged} unit={false} /> of <Amount value={price} /> used
+          <span
+            className={cn(
+              "inline-flex h-8 items-center gap-1.5 rounded-pill px-2.5 text-[12px] font-medium tabular sm:mx-2 sm:gap-2 sm:px-3",
+              interrupted ? "bg-destructive/40 text-white" : "bg-chain/35 text-white",
+            )}
+          >
+            <span className={cn("size-[7px] shrink-0 rounded-pill", interrupted ? "bg-destructive" : "bg-chain", playing && !interrupted && "animate-chunk-tick")} />
+            <span className="inline-flex items-center gap-1">
+              <Amount value={charged} unit={false} />
+              <span className="hidden items-center gap-1 sm:inline-flex">
+                of <Amount value={price} />
+              </span>
+              <span className="max-[399px]:hidden">used</span>
             </span>
           </span>
-          <button type="button" onClick={onToggleFullscreen} aria-label={fullscreen ? "Exit full screen" : "Full screen"} className="grid size-10 place-items-center rounded-pill hover:bg-white/15">
-            {fullscreen ? <ArrowsIn size={22} /> : <ArrowsOut size={22} />}
+          <button type="button" onClick={onToggleFullscreen} aria-label={fullscreen ? "Exit full screen" : "Full screen"} className="grid size-9 place-items-center rounded-pill hover:bg-white/15 sm:size-10">
+            {fullscreen ? <ArrowsIn size={20} className="sm:size-[22px]" /> : <ArrowsOut size={20} className="sm:size-[22px]" />}
           </button>
         </span>
       </div>

@@ -21,8 +21,10 @@ export function Player({ video }: { video: Video }) {
   const [muted, setMuted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
-  const playing = status === "preview" || status === "streaming";
-  const covered = status === "idle" || status === "insufficient" || status === "locking";
+  // The previous video's session can still be refunding after a switch; it never plays in this player.
+  const foreign = !!session && session.videoId !== video.id;
+  const playing = !foreign && (status === "preview" || status === "streaming");
+  const covered = foreign || status === "idle" || status === "insufficient" || status === "locking";
 
   const wake = useCallback(() => {
     setControlsVisible(true);
@@ -48,17 +50,47 @@ export function Player({ video }: { video: Video }) {
   }, [wake]);
 
   const toggleFullscreen = useCallback(() => {
-    const el = wrapperRef.current;
+    const el = wrapperRef.current as FullscreenElement | null;
+    const media = mediaRef.current as FullscreenVideo | null;
     if (!el) return;
-    if (document.fullscreenElement) void document.exitFullscreen();
-    else void el.requestFullscreen().catch(() => undefined);
+    const doc = document as FullscreenDocument;
+    if (fullscreenElement()) {
+      void Promise.resolve((doc.exitFullscreen ?? doc.webkitExitFullscreen)?.call(doc)).catch(() => undefined);
+    } else if (media?.webkitDisplayingFullscreen) {
+      media.webkitExitFullscreen?.();
+    } else if (el.requestFullscreen || el.webkitRequestFullscreen) {
+      // Wrapper fullscreen keeps our controls and the money counter on screen (desktop, Android, iPad).
+      const request = el.requestFullscreen ?? el.webkitRequestFullscreen;
+      void Promise.resolve(request?.call(el))
+        .then(() => lockLandscape())
+        .catch(() => media?.webkitEnterFullscreen?.());
+    } else {
+      // iPhone Safari only lets the <video> itself go fullscreen, with the native controls.
+      media?.webkitEnterFullscreen?.();
+    }
     wake();
   }, [wake]);
 
   useEffect(() => {
-    const onChange = () => setFullscreen(document.fullscreenElement === wrapperRef.current);
+    const onChange = () => {
+      const active = fullscreenElement() === wrapperRef.current;
+      setFullscreen(active);
+      if (!active) unlockOrientation();
+    };
+    const media = mediaRef.current;
+    const onNativeEnd = () => {
+      // Returning from the iPhone native player can leave the element paused without an event.
+      const m = mediaRef.current;
+      if (m) setPaused(m.paused);
+    };
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    media?.addEventListener("webkitendfullscreen", onNativeEnd);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+      media?.removeEventListener("webkitendfullscreen", onNativeEnd);
+    };
   }, []);
 
   // Keyboard: space/k play-pause, f fullscreen, m mute, arrows seek 5 s.
@@ -95,7 +127,7 @@ export function Player({ video }: { video: Video }) {
 
   useEffect(() => {
     const media = mediaRef.current;
-    if (!media || !session) return;
+    if (!media || !session || session.videoId !== video.id) return;
     if (!Hls.isSupported()) {
       engine.interrupt(new Error("Media Source Extensions are not available in this browser"));
       return;
@@ -141,10 +173,11 @@ export function Player({ video }: { video: Video }) {
       media.removeEventListener("play", onPlay);
       media.removeEventListener("pause", onPause);
       media.removeEventListener("ended", onEnded);
+      engine.detach(hls);
       hls.destroy();
       clearTimeout(hideTimer.current);
     };
-  }, [session, wake]);
+  }, [session, video.id, wake]);
 
   const showControls = !covered && (controlsVisible || paused);
   return (
@@ -172,7 +205,34 @@ export function Player({ video }: { video: Video }) {
         onToggleFullscreen={toggleFullscreen}
       />
       <LockCover video={video} />
-      {status === "interrupted" ? <InterruptedBanner /> : null}
+      {status === "interrupted" && !foreign ? <InterruptedBanner /> : null}
     </div>
   );
+}
+
+type FullscreenDocument = Document & { webkitFullscreenElement?: Element | null; webkitExitFullscreen?: () => void };
+type FullscreenElement = HTMLDivElement & { webkitRequestFullscreen?: () => void };
+type FullscreenVideo = HTMLVideoElement & {
+  webkitEnterFullscreen?: () => void;
+  webkitExitFullscreen?: () => void;
+  webkitDisplayingFullscreen?: boolean;
+};
+
+function fullscreenElement(): Element | null {
+  const doc = document as FullscreenDocument;
+  return doc.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+}
+
+/** Phones play fullscreen video sideways; browsers without the API (or desktop) just refuse. */
+function lockLandscape() {
+  const orientation = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+  void orientation?.lock?.("landscape").catch(() => undefined);
+}
+
+function unlockOrientation() {
+  try {
+    screen.orientation?.unlock?.();
+  } catch {
+    // not locked, or not supported
+  }
 }

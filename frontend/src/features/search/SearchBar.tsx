@@ -25,7 +25,7 @@ function writeHistory(list: string[]) {
 }
 
 /**
- * YouTube's header search: 536 px at rest, 632 px while focused, with the leading glass and the
+ * YouTube's header search: up to 536 px at rest, 632 px while focused, with the leading glass and the
  * recent-search list appearing on focus. Picking a row runs it; the × forgets it.
  */
 export function SearchBar() {
@@ -96,7 +96,12 @@ export function SearchBar() {
         e.preventDefault();
         run(active >= 0 && matches[active] ? matches[active] : value);
       }}
-      className={cn("absolute left-1/2 hidden -translate-x-1/2 transition-[width] duration-200 ease-ht md:flex", open ? "w-[632px]" : "w-[536px]")}
+      // Centred over the page only when the header is wide enough to never reach the brand or the
+      // wallet controls; narrower (tablets, phones on their side) it joins the row and shrinks.
+      className={cn(
+        "relative mx-auto hidden min-w-0 flex-1 transition-[width,max-width] duration-200 ease-ht md:flex xl:absolute xl:left-1/2 xl:mx-0 xl:max-w-none xl:flex-none xl:-translate-x-1/2",
+        open ? "max-w-[632px] xl:w-[632px]" : "max-w-[536px] xl:w-[536px]",
+      )}
     >
       <div
         className={cn(

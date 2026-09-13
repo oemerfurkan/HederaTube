@@ -73,7 +73,9 @@ export class SessionEngine {
   reset(): void {
     this.payment = undefined;
     this.closing = undefined;
-    this.store.setState({ ...initial });
+    // replace, not merge: optional keys (session, video, error, lockTx) are absent from `initial`,
+    // so a merge would keep the previous video's session alive after the reset
+    this.store.setState({ ...initial }, true);
   }
 
   /** Decides between the Lock and Deposit covers from the wallet balance. */
@@ -87,6 +89,13 @@ export class SessionEngine {
   attach(hls: Hls, media: HTMLVideoElement): void {
     this.hls = hls;
     this.media = media;
+  }
+
+  /** The player is tearing its hls instance down; forget it so a late close never touches a destroyed one. */
+  detach(hls: Hls): void {
+    if (this.hls !== hls) return;
+    this.hls = undefined;
+    this.media = undefined;
   }
 
   /**

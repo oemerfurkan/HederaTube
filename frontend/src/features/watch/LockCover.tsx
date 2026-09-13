@@ -12,10 +12,16 @@ import type { Video } from "@/api/types";
  * until the lock is on chain and playback takes over.
  */
 export function LockCover({ video }: { video: Video }) {
-  const status = useEngine(s => s.status);
-  const error = useEngine(s => s.error);
+  const engineStatus = useEngine(s => s.status);
+  const engineError = useEngine(s => s.error);
+  const engineVideoId = useEngine(s => s.session?.videoId ?? s.video?.id);
   const wallet = useWallet();
   const [gone, setGone] = useState(false);
+  // Until the engine has been handed this video (the previous one may still be refunding), show a
+  // spinner and ignore presses instead of the old video's state.
+  const switching = engineVideoId !== video.id;
+  const status = switching ? "locking" : engineStatus;
+  const error = switching ? undefined : engineError;
   const covering = status === "idle" || status === "insufficient" || status === "locking";
 
   // a plain CSS fade: it still runs when the tab is not painting frames, unlike a tweened one
